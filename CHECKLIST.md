@@ -27,30 +27,32 @@ flowmate/
 
 ## Phase 0 — 저장소 세팅 (담당: 1명, 완료 시 전원에게 공유)
 
-- [ ] 기존 프론트엔드 파일을 `frontend/`로 이동
-- [ ] `backend/` Express + TypeScript + Prisma(SQLite) 스캐폴딩
-- [ ] 루트 `README.md`에 실행 방법 정리 (`npm install && npm run dev` 등)
-- [ ] `.env.example` 작성 (`DATABASE_URL`, `ANTHROPIC_API_KEY`, `PORT`)
-- [ ] GitHub Projects 보드 생성 + 이 체크리스트 Issue로 옮기기
+- [x] 기존 프론트엔드 파일을 `frontend/`로 이동
+- [x] `backend/` Express + TypeScript + Prisma(SQLite) 스캐폴딩
+- [x] 루트 `README.md`에 실행 방법 정리 (`npm install && npm run dev` 등)
+- [x] `.env.example` 작성 (`DATABASE_URL`, `ANTHROPIC_API_KEY`, `PORT`)
+- [ ] GitHub Projects 보드 생성 + 이 체크리스트 Issue로 옮기기 — **아직 안 함, 누군가 해야 함**
 
 ## Phase 1 — 백엔드 기초 (DB 스키마 + 서버 골격)
 
-- [ ] Prisma 스키마 작성: `Platform`, `Sale`, `FixedCost`, `TaxReserve`, `RoiInput`
-- [ ] `mock.ts` 데이터를 그대로 옮기는 시드(seed) 스크립트 작성
-- [ ] Express 서버 골격: CORS, JSON 미들웨어, 에러 핸들러, `/health` 체크
-- [ ] 라우터 폴더 구조 정리 (`routes/platforms.ts`, `routes/sales.ts` ...)
+- [x] Prisma 스키마 작성: `Platform`, `Sale`, `FixedCost`, `TaxReserve`, `RoiInput`
+- [x] `mock.ts` 데이터를 그대로 옮기는 시드(seed) 스크립트 작성
+- [x] Express 서버 골격: CORS, JSON 미들웨어, 에러 핸들러, `/health` 체크
+- [x] 라우터 폴더 구조 정리 (`routes/platforms.ts`, `routes/sales.ts`, `routes/dashboard.ts`)
 
 ## Phase 2 — Aggregate 기능 (데이터 입력 + 대시보드)
 
 > 화면: `Connect.tsx`, `Sales.tsx`
 
-- [ ] `GET /api/platforms` — 플랫폼별 매출/수수료/순익 (mock의 `platformDerived` 형태)
-- [ ] `POST /api/platforms/:key/connect` — 소스 연결 토글
-- [ ] `POST /api/sales` — 매출 수동 입력 (날짜, 플랫폼, 금액, 예약건수)
-- [ ] `POST /api/sales/upload` — CSV 업로드 (multer + csv-parse)
-- [ ] `POST /api/fixed-costs`, `GET /api/fixed-costs` — 고정비 등록/조회
-- [ ] `GET /api/dashboard/summary` — 월별 추이 + 플랫폼 비교 (mock의 `monthlyTrend`, `platformMonthlyTotals`)
-- [ ] 프론트 `Connect.tsx`, `Sales.tsx`에서 mock import 제거하고 위 API로 교체
+- [x] `GET /api/platforms` — 플랫폼별 매출/수수료/순익 (mock의 `platformDerived` 형태)
+- [x] `POST /api/platforms/:key/connect` — 소스 연결 토글
+- [x] `POST /api/sales` — 매출 수동 입력 (날짜, 플랫폼, 금액, 예약건수)
+- [ ] `POST /api/sales/upload` — CSV 업로드 (multer + csv-parse) — **코드는 있으나 실제 업로드 테스트 안 해봄, 검증 필요**
+- [ ] `POST /api/fixed-costs`, `GET /api/fixed-costs` — 고정비 등록/조회 — **아직 안 만듦, FixedCost 테이블은 있지만 라우터 없음**
+- [x] `GET /api/dashboard/summary` — 월별 추이 + 플랫폼 합계 (mock의 `monthlyTrend`)
+- [ ] 프론트 `Connect.tsx`, `Sales.tsx`에서 mock import 제거하고 위 API로 교체 — **`Dashboard.tsx`만 연결됨, `Connect.tsx`/`Sales.tsx`는 여전히 100% mock/로컬 state**
+- [ ] **(기획서 누락분)** 플랫폼별 예약률·공실률 데이터 — 기획서 "공간대여업 특화 데이터"에 명시돼 있으나 현재 Prisma 스키마에 필드 없음. `Platform` 또는 `Sale`에 `occupancy`/`vacancy` 추가 필요 (mock의 `rentalChannels.occupancy/vacancy` 참고)
+- [ ] **(기획서 누락분)** 금융 건강 점수 — 기획서 기능1에 명시(현금흐름 안정성·고정비 비율·매출 변동성·연체위험 종합). MVP 제외 항목은 "정교한 알고리즘"뿐이라 단순 룰 기반 점수는 구현 대상. 지금은 프론트에 `healthScore`가 mock 하드코딩으로 남아있음 → `GET /api/health-score` 추가 권장 (Phase 3 데이터 다 모인 뒤 만들 것)
 
 ## Phase 3 — Predict 기능 (현금흐름 예측)
 
@@ -60,6 +62,8 @@ flowmate/
 - [ ] 위 결과에서 잔액이 임계값 이하인 날 자동 추출 → 위험일 알림 (`riskAlert`)
 - [ ] `POST /api/roi/calculate` — 투자금/고정비/순수익 입력 → 회수 기간(개월) 계산
 - [ ] `GET /api/tax-reserve`, `POST /api/tax-reserve` — 매출의 15~20% 권장 예비금 vs 현재 보유액
+- [ ] **(기획서 누락분)** 비수기 공실 기반 현금흐름 예측 멘트 — "○월부터 비수기 진입 예상, 예상 잔액 OO만원" (기획서 기능2). 일별 잔액 예측과는 별개로 월 단위 요약 텍스트 필요
+- [ ] **(기획서 누락분)** 성수기 진입 N주 전 자금 준비 알림 — "여름 성수기 4주 전, 인테리어·소모품 비용 OO만원 필요 예상" (기획서 기능2)
 - [ ] 프론트 `Forecast.tsx`에서 mock 제거하고 API 연결
 
 ## Phase 4 — Act 기능 (행동 추천)
@@ -67,7 +71,7 @@ flowmate/
 > 화면: `Actions.tsx`
 
 - [ ] `GET /api/platform-strategy` — 수수료율 vs 순익률 vs 예약수 비교해서 추천 문구 룰 기반 생성
-- [ ] `GET /api/price-benchmark` — 시세 구간 (MVP는 정적 데이터, v2에서 크롤링)
+- [ ] `GET /api/price-benchmark` — 시세 구간 + 소비자 선호 가격대 분포 (mock의 `priceBenchmark`, `priceBands` 둘 다 포함. MVP는 정적 데이터, v2에서 크롤링)
 - [ ] `GET /api/policy-funds` — 정책자금 안내 (정적 데이터)
 - [ ] 프론트 `Actions.tsx`에서 mock 제거하고 API 연결
 
