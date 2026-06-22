@@ -31,7 +31,7 @@ flowmate/
 - [x] `backend/` Express + TypeScript + Prisma(SQLite) 스캐폴딩
 - [x] 루트 `README.md`에 실행 방법 정리 (`npm install && npm run dev` 등)
 - [x] `.env.example` 작성 (`DATABASE_URL`, `ANTHROPIC_API_KEY`, `PORT`)
-- [ ] GitHub Projects 보드 생성 + 이 체크리스트 Issue로 옮기기 — **팀 결정으로 일단 보류, 필요해지면 나중에**
+- [ ] GitHub Projects 보드 생성 + 이 체크리스트 Issue로 옮기기 — 선택 (팀 결정으로 일단 보류)
 
 ## Phase 1 — 백엔드 기초 (DB 스키마 + 서버 골격)
 
@@ -51,10 +51,10 @@ flowmate/
 - [x] `POST /api/fixed-costs`, `GET /api/fixed-costs` — 고정비 등록/조회
 - [x] `GET /api/dashboard/summary` — 월별 추이 + 플랫폼 합계 (mock의 `monthlyTrend`)
 - [x] `GET /api/dashboard/platform-breakdown?month=YYYY-MM` — 특정 월의 플랫폼별 매출/수수료/순익 분해 (mock의 `platformBreakdownAt` 대체, `Sales.tsx` 파이/바차트·표에서 사용)
-- [x] **(기획서 누락분)** 플랫폼별 예약률·공실률 데이터 — `Platform`에 `occupancy`/`vacancy` 필드 추가 + 마이그레이션 완료
+- [x] 플랫폼별 예약률·공실률 데이터 — `Platform`에 `occupancy`/`vacancy` 필드 추가 + 마이그레이션 완료
 - [x] 프론트 `Connect.tsx` mock 제거하고 API로 교체 (소스 연결 토글, 고정비 등록/목록, CSV 업로드 모두 실제 백엔드 호출)
 - [x] 프론트 `Sales.tsx` mock 제거하고 API로 교체 (`getDashboardSummary`, `getPlatforms`, `getPlatformBreakdown` 사용)
-- [ ] **(기획서 누락분, Phase 3로 이동)** 금융 건강 점수 — 기획서 기능1에 명시. 현금흐름 안정성·고정비 비율 등 Phase 3 예측 데이터가 있어야 계산 가능해서 Phase 3로 옮김. 지금은 `Dashboard.tsx`에 `healthScore` mock이 하드코딩으로 남아있음(의도적, Phase 3에서 교체)
+- [ ] 금융 건강 점수 (Phase 3로 이동) — 기획서 기능1에 명시. 현금흐름 안정성·고정비 비율 등 Phase 3 예측 데이터가 있어야 계산 가능해서 Phase 3로 옮김. 지금은 `Dashboard.tsx`에 `healthScore` mock이 하드코딩으로 남아있음(의도적, Phase 3에서 교체)
 
 ## Phase 3 — Predict 기능 (현금흐름 예측)
 
@@ -64,9 +64,9 @@ flowmate/
 - [ ] 위 결과에서 잔액이 임계값 이하인 날 자동 추출 → 위험일 알림 (`riskAlert`)
 - [ ] `POST /api/roi/calculate` — 투자금/고정비/순수익 입력 → 회수 기간(개월) 계산
 - [ ] `GET /api/tax-reserve`, `POST /api/tax-reserve` — 매출의 15~20% 권장 예비금 vs 현재 보유액
-- [ ] **(기획서 누락분)** 비수기 공실 기반 현금흐름 예측 멘트 — "○월부터 비수기 진입 예상, 예상 잔액 OO만원" (기획서 기능2). 일별 잔액 예측과는 별개로 월 단위 요약 텍스트 필요
-- [ ] **(기획서 누락분)** 성수기 진입 N주 전 자금 준비 알림 — "여름 성수기 4주 전, 인테리어·소모품 비용 OO만원 필요 예상" (기획서 기능2)
-- [ ] **(기획서 누락분, Phase 2에서 이동)** 금융 건강 점수 — `GET /api/health-score`. 현금흐름 안정성(일별 잔액예측 결과)·고정비 비율(고정비÷매출)·매출 변동성(월별 추이 표준편차)·연체위험을 룰 기반으로 종합해서 0~100점 산출. 프론트 `Dashboard.tsx`의 `healthScore` mock을 이걸로 교체
+- [ ] 비수기 공실 기반 현금흐름 예측 멘트 — "○월부터 비수기 진입 예상, 예상 잔액 OO만원" (기획서 기능2). 일별 잔액 예측과는 별개로 월 단위 요약 텍스트 필요
+- [ ] 성수기 진입 N주 전 자금 준비 알림 — "여름 성수기 4주 전, 인테리어·소모품 비용 OO만원 필요 예상" (기획서 기능2)
+- [ ] 금융 건강 점수 (Phase 2에서 이동) — `GET /api/health-score`. 현금흐름 안정성(일별 잔액예측 결과)·고정비 비율(고정비÷매출)·매출 변동성(월별 추이 표준편차)·연체위험을 룰 기반으로 종합해서 0~100점 산출. 프론트 `Dashboard.tsx`의 `healthScore` mock을 이걸로 교체
 - [ ] 프론트 `Forecast.tsx`에서 mock 제거하고 API 연결
 
 ## Phase 4 — Act 기능 (행동 추천)
