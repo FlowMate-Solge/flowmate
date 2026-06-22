@@ -1,0 +1,56 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model Platform {
+  id           String   @id @default(cuid())
+  key          String   @unique // 'spacecloud' | 'naver' | 'ourplace' ...
+  name         String
+  color        String
+  feeRate      Float
+  settleCycle  String
+  connected    Boolean  @default(false)
+  sales        Sale[]
+  createdAt    DateTime @default(now())
+}
+
+model Sale {
+  id          String   @id @default(cuid())
+  platformId  String
+  platform    Platform @relation(fields: [platformId], references: [id])
+  date        DateTime
+  grossAmount Int // 원 단위
+  bookings    Int      @default(1)
+  source      String   @default("manual") // manual | csv
+  createdAt   DateTime @default(now())
+}
+
+model FixedCost {
+  id         String   @id @default(cuid())
+  item       String
+  dayOfMonth Int
+  amount     Int // 원 단위
+  createdAt  DateTime @default(now())
+}
+
+model TaxReserve {
+  id             String   @id @default(cuid())
+  rate           Float    @default(0.18)
+  currentBalance Int      @default(0)
+  nextFilingDate DateTime
+  filingType     String
+  updatedAt      DateTime @updatedAt
+}
+
+model RoiInput {
+  id            String   @id @default(cuid())
+  investment    Int
+  monthlyFixed  Int
+  avgMonthlyNet Int
+  createdAt     DateTime @default(now())
+}

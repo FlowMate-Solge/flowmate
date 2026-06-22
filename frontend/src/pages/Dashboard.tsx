@@ -1,3 +1,4 @@
+import { useEffect, useState } from 'react'
 import {
   Bar,
   CartesianGrid,
@@ -11,7 +12,11 @@ import {
 } from 'recharts'
 import { TrendingUp } from 'lucide-react'
 import { Card, CardTitle, PageHeader, Pill } from '../components/ui'
-import { fmtMan, healthScore, monthlyTrend, totals } from '../data/mock'
+import { fmtMan, healthScore } from '../data/mock'
+import { getDashboardSummary, type DashboardSummary } from '../lib/api'
+
+// 백엔드 grossAmount/fee/net은 원 단위, 프론트 mock 표시는 만원 단위라 /10000으로 변환
+const toManwon = (won: number) => Math.round(won / 10_000)
 
 function StatCard({
   label,
@@ -46,6 +51,29 @@ function StatCard({
 }
 
 export default function Dashboard() {
+  const [summary, setSummary] = useState<DashboardSummary | null>(null)
+  const [error, setError] = useState<string | null>(null)
+
+  useEffect(() => {
+    getDashboardSummary()
+      .then(setSummary)
+      .catch((e) => setError(e.message))
+  }, [])
+
+  if (error) {
+    return <p className="text-sm text-danger">대시보드 데이터를 불러오지 못했습니다: {error}</p>
+  }
+  if (!summary) {
+    return <p className="text-sm text-ink-400">불러오는 중...</p>
+  }
+
+  const { totals, monthlyTrend } = summary
+  const chartData = monthlyTrend.map((m) => ({
+    month: m.month.slice(5) + '월',
+    gross: toManwon(m.gross),
+    net: toManwon(m.net),
+  }))
+
   return (
     <div>
       <PageHeader
@@ -58,19 +86,19 @@ export default function Dashboard() {
       <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
         <StatCard
           label="이번 달 총매출"
-          value={fmtMan(totals.gross)}
+          value={fmtMan(toManwon(totals.gross))}
           sub="전월 대비 +12%"
           tone="positive"
         />
         <StatCard
           label="플랫폼 수수료"
-          value={fmtMan(totals.fee)}
+          value={fmtMan(toManwon(totals.fee))}
           sub={`매출의 ${((totals.fee / totals.gross) * 100).toFixed(1)}%`}
           tone="danger"
         />
         <StatCard
           label="실제 순수익"
-          value={fmtMan(totals.net)}
+          value={fmtMan(toManwon(totals.net))}
           sub={`예약 ${totals.bookings}건`}
         />
         <StatCard
@@ -93,7 +121,7 @@ export default function Dashboard() {
             월별 매출·순수익 추이
           </CardTitle>
           <ResponsiveContainer width="100%" height={260}>
-            <ComposedChart data={monthlyTrend} margin={{ left: -16, right: 8 }}>
+            <ComposedChart data={chartData} margin={{ left: -16, right: 8 }}>
               <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#eef0f4" />
               <XAxis dataKey="month" tickLine={false} axisLine={false} fontSize={12} />
               <YAxis tickLine={false} axisLine={false} fontSize={12} />
@@ -102,8 +130,8 @@ export default function Dashboard() {
                 contentStyle={{ borderRadius: 12, border: '1px solid #eef0f4' }}
               />
               <Bar dataKey="gross" name="매출" radius={[6, 6, 0, 0]} barSize={22}>
-                {monthlyTrend.map((m, i) => (
-                  <Cell key={i} fill={m.forecast ? '#bcd3ff' : '#3366ff'} />
+                {chartData.map((_, i) => (
+                  <Cell key={i} fill="#3366ff" />
                 ))}
               </Bar>
               <Line
