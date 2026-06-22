@@ -12,8 +12,13 @@ import {
 } from 'recharts'
 import { TrendingUp } from 'lucide-react'
 import { Card, CardTitle, PageHeader, Pill } from '../components/ui'
-import { fmtMan, healthScore } from '../data/mock'
-import { getDashboardSummary, type DashboardSummary } from '../lib/api'
+import { fmtMan } from '../data/mock'
+import {
+  getDashboardSummary,
+  getHealthScore,
+  type DashboardSummary,
+  type HealthScore,
+} from '../lib/api'
 
 // 백엔드 grossAmount/fee/net은 원 단위, 프론트 mock 표시는 만원 단위라 /10000으로 변환
 const toManwon = (won: number) => Math.round(won / 10_000)
@@ -52,18 +57,22 @@ function StatCard({
 
 export default function Dashboard() {
   const [summary, setSummary] = useState<DashboardSummary | null>(null)
+  const [healthScore, setHealthScore] = useState<HealthScore | null>(null)
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
-    getDashboardSummary()
-      .then(setSummary)
+    Promise.all([getDashboardSummary(), getHealthScore()])
+      .then(([s, h]) => {
+        setSummary(s)
+        setHealthScore(h)
+      })
       .catch((e) => setError(e.message))
   }, [])
 
   if (error) {
     return <p className="text-sm text-danger">대시보드 데이터를 불러오지 못했습니다: {error}</p>
   }
-  if (!summary) {
+  if (!summary || !healthScore) {
     return <p className="text-sm text-ink-400">불러오는 중...</p>
   }
 
