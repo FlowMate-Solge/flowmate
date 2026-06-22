@@ -32,6 +32,8 @@ router.get('/', async (_req, res, next) => {
         feeRate: p.feeRate,
         settleCycle: p.settleCycle,
         connected: p.connected,
+        occupancy: p.occupancy,
+        vacancy: p.vacancy,
         gross,
         fee,
         net,

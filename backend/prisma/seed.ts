@@ -12,6 +12,8 @@ const platforms = [
     feeRate: 0.1,
     settleCycle: '익월 10일',
     connected: true,
+    occupancy: 85,
+    vacancy: 15,
   },
   {
     key: 'naver',
@@ -20,6 +22,8 @@ const platforms = [
     feeRate: 0.033,
     settleCycle: '결제 후 2일',
     connected: true,
+    occupancy: 78,
+    vacancy: 22,
   },
   {
     key: 'ourplace',
@@ -28,6 +32,8 @@ const platforms = [
     feeRate: 0.12,
     settleCycle: '익월 15일',
     connected: false,
+    occupancy: 68,
+    vacancy: 32,
   },
 ]
 

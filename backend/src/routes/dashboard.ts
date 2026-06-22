@@ -48,4 +48,39 @@ router.get('/summary', async (_req, res, next) => {
   }
 })
 
+// GET /api/dashboard/platform-breakdown?month=YYYY-MM — 특정 월의 플랫폼별 매출/수수료/순익 분해
+// month를 안 주면 가장 최근 달을 사용
+router.get('/platform-breakdown', async (req, res, next) => {
+  try {
+    const platforms = await prisma.platform.findMany({ include: { sales: true } })
+
+    const requestedMonth = req.query.month as string | undefined
+    const allMonths = new Set(platforms.flatMap((p) => p.sales.map((s) => monthKey(s.date))))
+    const targetMonth = requestedMonth ?? Array.from(allMonths).sort().at(-1)
+
+    const breakdown = platforms.map((p) => {
+      const monthSales = p.sales.filter((s) => monthKey(s.date) === targetMonth)
+      const gross = monthSales.reduce((sum, s) => sum + s.grossAmount, 0)
+      const fee = Math.round(gross * p.feeRate)
+      const net = gross - fee
+      return {
+        id: p.id,
+        key: p.key,
+        name: p.name,
+        color: p.color,
+        feeRate: p.feeRate,
+        settleCycle: p.settleCycle,
+        gross,
+        fee,
+        net,
+        netRate: gross > 0 ? net / gross : 0,
+      }
+    })
+
+    res.json({ month: targetMonth ?? null, breakdown })
+  } catch (err) {
+    next(err)
+  }
+})
+
 export default router

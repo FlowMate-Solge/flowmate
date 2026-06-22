@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import {
   Bar,
   BarChart,
@@ -16,16 +16,15 @@ import {
 } from 'recharts'
 import { ArrowRight, CircleAlert, MousePointerClick, TrendingUp } from 'lucide-react'
 import { Card, CardTitle, Pill } from '../components/ui'
+import { fmtMan, fmtWon } from '../data/mock'
 import {
-  fmtMan,
-  fmtWon,
-  platformBreakdownAt,
-  platformMonths,
-  platformMonthlyTotals,
-  rentalDerived,
-  rentalInsight,
-  rentalTotals,
-} from '../data/mock'
+  getDashboardSummary,
+  getPlatformBreakdown,
+  getPlatforms,
+  type DashboardSummary,
+  type PlatformBreakdown,
+  type PlatformSummary,
+} from '../lib/api'
 
 function Row({
   label,
@@ -46,14 +45,59 @@ function Row({
 
 const ranges = ['최근 6개월 추이', '연간 추이'] as const
 
+// 백엔드 grossAmount/fee/net은 원 단위, 차트 표시는 만원 단위라 변환
+const toManwon = (won: number) => Math.round(won / 10_000)
+const monthLabel = (monthKey: string) => `${Number(monthKey.slice(5))}월`
+
 export default function Sales() {
   const [range, setRange] = useState<(typeof ranges)[number]>(ranges[0])
-  // 월별 추이에서 선택한 월(기본: 가장 최근 월). 플랫폼별 비교·점유율에 연동.
-  const [selMonth, setSelMonth] = useState(platformMonths.length - 1)
+  const [summary, setSummary] = useState<DashboardSummary | null>(null)
+  const [platforms, setPlatforms] = useState<PlatformSummary[] | null>(null)
+  const [selIndex, setSelIndex] = useState<number | null>(null)
+  const [breakdown, setBreakdown] = useState<PlatformBreakdown | null>(null)
+  const [error, setError] = useState<string | null>(null)
 
-  const selLabel = platformMonths[selMonth]
-  const breakdown = platformBreakdownAt(selMonth)
-  const shareTotal = breakdown.reduce((s, p) => s + p.gross, 0)
+  useEffect(() => {
+    Promise.all([getDashboardSummary(), getPlatforms()])
+      .then(([s, p]) => {
+        setSummary(s)
+        setPlatforms(p)
+        setSelIndex(s.monthlyTrend.length - 1)
+      })
+      .catch((e) => setError(e.message))
+  }, [])
+
+  const chartData = summary
+    ? summary.monthlyTrend.map((m) => ({
+        month: m.month,
+        label: monthLabel(m.month),
+        gross: toManwon(m.gross),
+        net: toManwon(m.net),
+      }))
+    : []
+
+  const selMonthKey = selIndex != null ? chartData[selIndex]?.month : undefined
+  const selLabel = selIndex != null ? chartData[selIndex]?.label : ''
+
+  useEffect(() => {
+    if (!selMonthKey) return
+    getPlatformBreakdown(selMonthKey)
+      .then(setBreakdown)
+      .catch((e) => setError(e.message))
+  }, [selMonthKey])
+
+  if (error) {
+    return <p className="text-sm text-danger">매출 데이터를 불러오지 못했습니다: {error}</p>
+  }
+  if (!summary || !platforms || !breakdown) {
+    return <p className="text-sm text-ink-400">불러오는 중...</p>
+  }
+
+  const items = breakdown.breakdown
+  const shareTotal = items.reduce((s, p) => s + p.gross, 0)
+  const avgFeeRate =
+    platforms.reduce((s, p) => s + p.fee, 0) / platforms.reduce((s, p) => s + p.gross, 0)
+  const totals = summary.totals
 
   return (
     <div>
@@ -89,36 +133,34 @@ export default function Sales() {
         <CardTitle
           right={<span className="text-xs text-ink-400">Real-time stats</span>}
         >
-          통합 금전 출납 결산 (6월 전체)
+          통합 금전 출납 결산 ({selLabel} 전체)
         </CardTitle>
 
         <div className="grid grid-cols-1 gap-6 md:grid-cols-3">
           <div>
             <div className="text-sm text-ink-500">통합 총매출액(세전)</div>
             <div className="mt-1 text-3xl font-extrabold tracking-tight">
-              {fmtWon(rentalTotals.gross)}
+              {fmtWon(totals.gross)}
             </div>
             <div className="mt-1 flex items-center gap-1 text-xs font-medium text-positive">
-              <TrendingUp size={12} /> 8.1% 지난 분기비
+              <TrendingUp size={12} /> 예약 {totals.bookings}건
             </div>
           </div>
 
           <div>
             <div className="flex items-center gap-2 text-sm text-ink-500">
-              플랫폼 총 수수료 <Pill tone="danger">평균 12.8%</Pill>
+              플랫폼 총 수수료{' '}
+              <Pill tone="danger">평균 {(avgFeeRate * 100).toFixed(1)}%</Pill>
             </div>
             <div className="mt-1 text-3xl font-extrabold tracking-tight text-danger">
-              {fmtWon(rentalTotals.fee)}
-            </div>
-            <div className="mt-1 text-xs text-ink-400">
-              &quot;에어비앤비 중개 수수료가 가장 큰 요인&quot;
+              {fmtWon(totals.fee)}
             </div>
           </div>
 
           <div>
             <div className="text-sm text-ink-500">최종 순익 자금유입</div>
             <div className="mt-1 text-3xl font-extrabold tracking-tight text-brand-600">
-              {fmtWon(rentalTotals.net)}
+              {fmtWon(totals.net)}
             </div>
             <div className="mt-1 text-xs text-ink-400">수수료 공제 후 실수입</div>
           </div>
@@ -126,7 +168,10 @@ export default function Sales() {
 
         <div className="mt-5 flex items-start gap-2 rounded-xl bg-amber-50 px-4 py-3 text-sm leading-relaxed text-ink-700">
           <CircleAlert size={16} className="mt-0.5 shrink-0 text-warning" />
-          <span>{rentalInsight}</span>
+          <span>
+            플랫폼 평균 수수료율 {(avgFeeRate * 100).toFixed(1)}%입니다. 수수료가 낮고
+            예약 효율이 좋은 플랫폼 비중을 늘리는 것을 검토하세요.
+          </span>
         </div>
       </Card>
 
@@ -157,15 +202,15 @@ export default function Sales() {
           </div>
           <ResponsiveContainer width="100%" height={200}>
             <LineChart
-              data={platformMonthlyTotals}
+              data={chartData}
               margin={{ left: -8, right: 8 }}
               onClick={(e: any) => {
-                if (e && e.activeTooltipIndex != null) setSelMonth(e.activeTooltipIndex)
+                if (e && e.activeTooltipIndex != null) setSelIndex(e.activeTooltipIndex)
               }}
               className="cursor-pointer"
             >
               <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#eef0f4" />
-              <XAxis dataKey="month" tickLine={false} axisLine={false} fontSize={11} />
+              <XAxis dataKey="label" tickLine={false} axisLine={false} fontSize={11} />
               <YAxis
                 tickFormatter={(v) => `${v}만`}
                 tickLine={false}
@@ -218,7 +263,7 @@ export default function Sales() {
             <ResponsiveContainer width="55%" height={200}>
               <PieChart>
                 <Pie
-                  data={breakdown}
+                  data={items}
                   dataKey="gross"
                   nameKey="name"
                   innerRadius={48}
@@ -226,18 +271,18 @@ export default function Sales() {
                   paddingAngle={2}
                   stroke="none"
                 >
-                  {breakdown.map((p) => (
+                  {items.map((p) => (
                     <Cell key={p.id} fill={p.color} />
                   ))}
                 </Pie>
                 <Tooltip
-                  formatter={(v: number) => fmtMan(v)}
+                  formatter={(v: number) => fmtMan(toManwon(v))}
                   contentStyle={{ borderRadius: 12, border: '1px solid #eef0f4' }}
                 />
               </PieChart>
             </ResponsiveContainer>
             <div className="flex-1 space-y-3">
-              {breakdown.map((p) => (
+              {items.map((p) => (
                 <div key={p.id}>
                   <div className="flex items-center justify-between text-sm">
                     <span className="flex items-center gap-2 font-medium">
@@ -248,11 +293,11 @@ export default function Sales() {
                       {p.name}
                     </span>
                     <span className="font-bold">
-                      {((p.gross / shareTotal) * 100).toFixed(1)}%
+                      {shareTotal > 0 ? ((p.gross / shareTotal) * 100).toFixed(1) : '0.0'}%
                     </span>
                   </div>
                   <div className="ml-4.5 text-[11px] text-ink-400">
-                    {fmtMan(p.gross)}
+                    {fmtMan(toManwon(p.gross))}
                   </div>
                 </div>
               ))}
@@ -288,7 +333,11 @@ export default function Sales() {
               </span>
             </div>
             <ResponsiveContainer width="100%" height={220}>
-              <BarChart data={breakdown} layout="vertical" margin={{ left: 24, right: 16 }}>
+              <BarChart
+                data={items.map((p) => ({ ...p, net: toManwon(p.net), fee: toManwon(p.fee) }))}
+                layout="vertical"
+                margin={{ left: 24, right: 16 }}
+              >
                 <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="#eef0f4" />
                 <XAxis type="number" tickLine={false} axisLine={false} fontSize={12} />
                 <YAxis
@@ -310,7 +359,7 @@ export default function Sales() {
                   radius={[6, 0, 0, 6]}
                   barSize={18}
                 >
-                  {breakdown.map((p) => (
+                  {items.map((p) => (
                     <Cell key={p.id} fill={p.color} />
                   ))}
                 </Bar>
@@ -337,7 +386,7 @@ export default function Sales() {
                 </tr>
               </thead>
               <tbody>
-                {breakdown.map((p) => (
+                {items.map((p) => (
                   <tr key={p.id} className="border-t border-slate-100">
                     <td className="px-3 py-2.5">
                       <div className="flex items-center gap-2 font-medium">
@@ -351,9 +400,9 @@ export default function Sales() {
                         정산 {p.settleCycle}
                       </div>
                     </td>
-                    <td className="px-3 py-2.5 text-right">{fmtMan(p.gross)}</td>
+                    <td className="px-3 py-2.5 text-right">{fmtMan(toManwon(p.gross))}</td>
                     <td className="px-3 py-2.5 text-right text-danger">
-                      -{fmtMan(p.fee)}
+                      -{fmtMan(toManwon(p.fee))}
                       <div className="text-[11px] text-ink-400">
                         {(p.feeRate * 100).toFixed(1)}%
                       </div>
@@ -368,13 +417,24 @@ export default function Sales() {
           </div>
         </div>
 
-        <div className="mt-4 flex items-center gap-2 rounded-xl bg-brand-50 px-4 py-3 text-sm text-brand-800">
-          <ArrowRight size={16} className="shrink-0" />
-          <span>
-            <b>네이버 예약</b>의 순익률이 96.7%로 가장 높습니다. 수수료 12%인{' '}
-            <b>아워플레이스</b>는 예약도 가장 적어 효율 점검이 필요합니다.
-          </span>
-        </div>
+        {items.length > 0 && (
+          <div className="mt-4 flex items-center gap-2 rounded-xl bg-brand-50 px-4 py-3 text-sm text-brand-800">
+            <ArrowRight size={16} className="shrink-0" />
+            <span>
+              {(() => {
+                const best = items.reduce((a, b) => (b.netRate > a.netRate ? b : a))
+                const worst = items.reduce((a, b) => (b.feeRate > a.feeRate ? b : a))
+                return (
+                  <>
+                    <b>{best.name}</b>의 순익률이 {(best.netRate * 100).toFixed(1)}%로 가장
+                    높습니다. 수수료 {(worst.feeRate * 100).toFixed(0)}%인{' '}
+                    <b>{worst.name}</b>은 효율 점검이 필요합니다.
+                  </>
+                )
+              })()}
+            </span>
+          </div>
+        )}
       </Card>
 
       {/* 수수료 구조 및 정산 정밀 대조 */}
@@ -384,7 +444,7 @@ export default function Sales() {
           각 채널별 운영 사이클 및 조건값 리스트입니다.
         </p>
         <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
-          {rentalDerived.map((c) => (
+          {platforms.map((c) => (
             <Card key={c.id}>
               <div className="mb-4 flex items-center justify-between">
                 <div className="flex items-center gap-2 text-base font-bold">
@@ -397,7 +457,7 @@ export default function Sales() {
                 <Pill tone="neutral">{c.settleCycle}</Pill>
               </div>
               <div className="space-y-2.5 text-sm">
-                <Row label="누적 매출액" value={fmtWon(c.gross)} />
+                <Row label="이번 달 매출액" value={fmtWon(c.gross)} />
                 <Row
                   label="플랫폼 수수료율"
                   value={`${(c.feeRate * 100).toFixed(0)}%`}

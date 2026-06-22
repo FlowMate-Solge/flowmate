@@ -19,7 +19,7 @@ backend/    Express + TypeScript + Prisma (SQLite)
 cd backend
 npm install
 cp .env.example .env
-npx prisma migrate dev --name init   # 최초 1회
+npx prisma migrate dev               # 최초 1회 (기존 migrations 적용)
 npm run seed                         # 데모 데이터 채우기
 npm run dev                          # http://localhost:4000
 ```
