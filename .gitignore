@@ -1,0 +1,29 @@
+# Dependencies
+node_modules/
+
+# Build output
+dist/
+
+# Vite / TS build cache
+*.tsbuildinfo
+vite.config.js
+vite.config.d.ts
+
+# Claude Code local settings (personal, not shared)
+.claude/settings.local.json
+
+# Logs
+*.log
+npm-debug.log*
+
+# Editor / OS junk
+.vscode/
+.idea/
+.DS_Store
+__MACOSX/
+Thumbs.db
+
+# Env files (secrets)
+.env
+.env.local
+.env.*.local
