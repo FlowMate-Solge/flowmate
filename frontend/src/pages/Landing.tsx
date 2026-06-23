@@ -145,7 +145,7 @@ export default function Landing() {
 
         {/* QR — 데스크톱에서만, 발표용으로 크게 */}
         <div className="mt-6 hidden items-center gap-4 rounded-2xl border border-stone-200 bg-white px-5 py-4 md:inline-flex w-fit">
-          <QRCode value={`${APP_URL}/`} size={80} fgColor="#0f172a" bgColor="#ffffff" />
+          <QRCode value={`${APP_URL}/app/dashboard`} size={80} fgColor="#0f172a" bgColor="#ffffff" />
           <div>
             <div className="text-[15px] font-bold text-ink-700">모바일에서 직접 체험</div>
             <div className="mt-1 text-[13px] text-ink-400">QR 스캔 → 바로 서비스 진입</div>

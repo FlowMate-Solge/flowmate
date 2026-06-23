@@ -62,9 +62,9 @@ export default function App() {
 
   useEffect(() => {
     if (!mode) {
-      // iframe 안에서는 자동 demo 진입 (랜딩 우측 폰 미리보기)
+      // iframe 미리보기 또는 QR 직접 진입(/app/...) → 자동 demo 시작
       if (window.self !== window.top) { enterDemo(); return }
-      navigate('/', { replace: true })
+      enterDemo()
     }
   }, [mode])
 
