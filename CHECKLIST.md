@@ -73,10 +73,10 @@ flowmate/
 
 > 화면: `Actions.tsx`
 
-- [ ] `GET /api/platform-strategy` — 수수료율 vs 순익률 vs 예약수 비교해서 추천 문구 룰 기반 생성
-- [ ] `GET /api/price-benchmark` — 시세 구간 + 소비자 선호 가격대 분포 (mock의 `priceBenchmark`, `priceBands` 둘 다 포함. MVP는 정적 데이터, v2에서 크롤링)
-- [ ] `GET /api/policy-funds` — 정책자금 안내 (정적 데이터)
-- [ ] 프론트 `Actions.tsx`에서 mock 제거하고 API 연결
+- [x] `GET /api/platform-strategy` — 수수료율 vs 순익률 vs 예약수 비교해서 추천 문구 룰 기반 생성 (플랫폼 데이터에서 동적 생성)
+- [x] `GET /api/price-benchmark` — 시세 구간 + 소비자 선호 가격대 분포 (`priceBenchmark`, `priceBands` 모두 포함. MVP 정적 데이터 `lib/actData.ts`, v2 크롤링)
+- [x] `GET /api/policy-funds` — 정책자금 안내 (정적 데이터)
+- [x] 프론트 `Actions.tsx`에서 mock 제거하고 API 연결 (+ 소비자 선호 가격대 분포 시각화 추가)
 
 ## Phase 5 — AI 금융비서 + 오늘의 브리핑 (Claude API)
 

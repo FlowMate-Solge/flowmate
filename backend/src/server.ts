@@ -4,6 +4,9 @@ import platformsRouter from './routes/platforms.js'
 import salesRouter from './routes/sales.js'
 import dashboardRouter from './routes/dashboard.js'
 import fixedCostsRouter from './routes/fixedCosts.js'
+import strategyRouter from './routes/strategy.js'
+import priceBenchmarkRouter from './routes/priceBenchmark.js'
+import policyFundsRouter from './routes/policyFunds.js'
 
 const app = express()
 const PORT = process.env.PORT ?? 4000
@@ -19,6 +22,9 @@ app.use('/api/platforms', platformsRouter)
 app.use('/api/sales', salesRouter)
 app.use('/api/dashboard', dashboardRouter)
 app.use('/api/fixed-costs', fixedCostsRouter)
+app.use('/api/platform-strategy', strategyRouter)
+app.use('/api/price-benchmark', priceBenchmarkRouter)
+app.use('/api/policy-funds', policyFundsRouter)
 
 app.use((err: Error, _req: express.Request, res: express.Response, _next: express.NextFunction) => {
   console.error(err)
