@@ -1,17 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { Send, Sparkles } from 'lucide-react'
 import { aiPresets } from '../data/mock'
-
-// 데모용 시나리오 응답. 실제 서비스에서는 Claude API 호출로 교체합니다.
-// → 사용자 재무 데이터(mock.ts)를 system 프롬프트 컨텍스트로 넣고
-//   messages.create({ model: 'claude-...', system, messages }) 형태로 연결.
-function getAnswer(q: string): string {
-  const hit = aiPresets.find(
-    (p) => q.includes(p.q.slice(0, 4)) || p.q.includes(q.slice(0, 4)),
-  )
-  if (hit) return hit.a
-  return '추천 질문을 눌러보시면 사장님의 실제 재무 데이터를 바탕으로 답변해 드릴게요. (데모 버전에서는 예시 질문에 답변이 준비되어 있습니다.)'
-}
+import { askAi } from '../lib/api'
 
 export default function AiAssistant() {
   const [input, setInput] = useState('')
@@ -29,18 +19,21 @@ export default function AiAssistant() {
     return () => document.removeEventListener('mousedown', onDoc)
   }, [])
 
-  function ask(q: string) {
+  async function ask(q: string) {
     if (!q.trim()) return
     setQuestion(q)
     setInput('')
     setOpen(true)
     setAnswer(null)
     setTyping(true)
-    const a = getAnswer(q)
-    setTimeout(() => {
+    try {
+      const res = await askAi(q)
+      setAnswer(res.answer ?? res.error ?? '답변을 가져오지 못했습니다.')
+    } catch {
+      setAnswer('AI 비서 호출에 실패했습니다. 백엔드 서버가 실행 중인지 확인하세요.')
+    } finally {
       setTyping(false)
-      setAnswer(a)
-    }, 600)
+    }
   }
 
   return (

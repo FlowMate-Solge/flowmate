@@ -10,12 +10,14 @@ import {
   XAxis,
   YAxis,
 } from 'recharts'
-import { TrendingUp } from 'lucide-react'
+import { AlertTriangle, CalendarClock, Sparkles, TrendingUp, Wallet } from 'lucide-react'
 import { Card, CardTitle, PageHeader, Pill } from '../components/ui'
 import { fmtMan } from '../data/mock'
 import {
+  getBriefing,
   getDashboardSummary,
   getHealthScore,
+  type Briefing,
   type DashboardSummary,
   type HealthScore,
 } from '../lib/api'
@@ -58,6 +60,7 @@ function StatCard({
 export default function Dashboard() {
   const [summary, setSummary] = useState<DashboardSummary | null>(null)
   const [healthScore, setHealthScore] = useState<HealthScore | null>(null)
+  const [briefing, setBriefing] = useState<Briefing | null>(null)
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
@@ -67,6 +70,8 @@ export default function Dashboard() {
         setHealthScore(h)
       })
       .catch((e) => setError(e.message))
+    // 브리핑은 실패해도 대시보드 본문은 보여야 하므로 별도 처리
+    getBriefing().then(setBriefing).catch(() => setBriefing(null))
   }, [])
 
   if (error) {
@@ -90,6 +95,69 @@ export default function Dashboard() {
         subtitle="흩어진 3개 플랫폼의 매출·수수료·순수익을 한 화면에서"
         badge="2026년 6월 기준"
       />
+
+      {/* 오늘의 브리핑 */}
+      {briefing && (
+        <Card className="mb-4 border-l-4 border-l-brand-500">
+          <CardTitle right={<span className="text-xs text-ink-400">{briefing.date}</span>}>
+            <span className="inline-flex items-center gap-1.5">
+              <Sparkles size={15} className="text-brand-600" /> 오늘의 브리핑
+            </span>
+          </CardTitle>
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-4">
+            <div className="rounded-xl bg-brand-50 px-4 py-3">
+              <div className="text-xs text-ink-500">오늘 예상 잔액</div>
+              <div className="mt-1 text-2xl font-extrabold text-brand-700">
+                {fmtMan(toManwon(briefing.expectedBalance))}
+              </div>
+            </div>
+            <div>
+              <div className="flex items-center gap-1 text-xs font-medium text-ink-500">
+                <CalendarClock size={13} /> 이번 주 정산
+              </div>
+              <ul className="mt-1.5 space-y-1 text-sm">
+                {briefing.weekSettlement.length ? (
+                  briefing.weekSettlement.map((s, i) => (
+                    <li key={i} className="flex justify-between gap-2">
+                      <span className="text-ink-600">
+                        {s.date} {s.platform}
+                      </span>
+                      <span className="font-semibold text-positive">
+                        +{fmtMan(toManwon(s.amount))}
+                      </span>
+                    </li>
+                  ))
+                ) : (
+                  <li className="text-ink-400">이번 주 정산 없음</li>
+                )}
+              </ul>
+            </div>
+            <div>
+              <div className="flex items-center gap-1 text-xs font-medium text-ink-500">
+                <Wallet size={13} /> 임박 지출
+              </div>
+              <ul className="mt-1.5 space-y-1 text-sm">
+                {briefing.upcoming.map((u, i) => (
+                  <li key={i} className="flex justify-between gap-2">
+                    <span className={u.urgent ? 'font-medium text-danger' : 'text-ink-600'}>
+                      {u.date} {u.label}
+                    </span>
+                    <span className="font-semibold text-ink-700">
+                      -{fmtMan(toManwon(u.amount))}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+            <div className="rounded-xl bg-amber-50 px-4 py-3">
+              <div className="flex items-center gap-1 text-xs font-medium text-amber-700">
+                <AlertTriangle size={13} /> 공실 위험
+              </div>
+              <p className="mt-1 text-xs leading-relaxed text-amber-900">{briefing.vacancy}</p>
+            </div>
+          </div>
+        </Card>
+      )}
 
       {/* 상단 요약 */}
       <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">

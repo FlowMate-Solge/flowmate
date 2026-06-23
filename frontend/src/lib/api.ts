@@ -198,6 +198,31 @@ export function getHealthScore() {
   return request<HealthScore>('/api/health-score')
 }
 
+export interface Briefing {
+  date: string
+  expectedBalance: number // 원
+  weekSettlement: { platform: string; amount: number; date: string }[]
+  upcoming: { label: string; amount: number; date: string; urgent: boolean }[]
+  vacancy: string
+}
+
+export interface AiAnswer {
+  configured: boolean
+  answer?: string
+  error?: string
+}
+
+export function getBriefing() {
+  return request<Briefing>('/api/briefing/today')
+}
+
+export function askAi(question: string) {
+  return request<AiAnswer>('/api/ai/ask', {
+    method: 'POST',
+    body: JSON.stringify({ question }),
+  })
+}
+
 export function getPlatforms() {
   return request<PlatformSummary[]>('/api/platforms')
 }
