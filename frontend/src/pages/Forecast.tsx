@@ -11,8 +11,10 @@ import {
   YAxis,
 } from 'recharts'
 import { AlertTriangle, Calculator, PiggyBank } from 'lucide-react'
-import { Card, CardTitle, PageHeader, Pill } from '../components/ui'
-import { fmtMan } from '../data/mock'
+import { Card, CardSkeleton, CardTitle, ErrorBanner, PageHeader, PageSkeleton, Pill } from '../components/ui'
+import { fmtMan } from '../lib/utils'
+import { useAuth } from '../contexts/AuthContext'
+import { DEMO_FORECAST, DEMO_ROI_DEFAULTS, DEMO_TAX } from '../data/demoData'
 import {
   calculateRoi,
   getForecast,
@@ -43,11 +45,16 @@ function ForecastTooltip({ active, payload }: any) {
 }
 
 function RoiCalculator() {
+  const { mode } = useAuth()
   const [input, setInput] = useState<RoiInput | null>(null)
   const [result, setResult] = useState<RoiResult | null>(null)
 
-  // 기본값(원) → 만원 단위로 변환해 입력 폼에 표시
   useEffect(() => {
+    if (mode === 'demo') {
+      const d = DEMO_ROI_DEFAULTS
+      setInput({ investment: toManwon(d.investment), monthlyFixed: toManwon(d.monthlyFixed), avgMonthlyNet: toManwon(d.avgMonthlyNet) })
+      return
+    }
     getRoiDefaults()
       .then((d) => setInput({
         investment: toManwon(d.investment),
@@ -55,7 +62,7 @@ function RoiCalculator() {
         avgMonthlyNet: toManwon(d.avgMonthlyNet),
       }))
       .catch(() => setInput({ investment: 0, monthlyFixed: 0, avgMonthlyNet: 0 }))
-  }, [])
+  }, [mode])
 
   // 입력(만원) → 원으로 환산해 백엔드 계산 호출
   useEffect(() => {
@@ -69,7 +76,7 @@ function RoiCalculator() {
       .catch(() => setResult(null))
   }, [input])
 
-  if (!input) return <Card><p className="text-sm text-ink-400">불러오는 중...</p></Card>
+  if (!input) return <CardSkeleton />
 
   const fields = [
     { key: 'investment' as const, label: '초기 투자비' },
@@ -125,15 +132,17 @@ function RoiCalculator() {
 }
 
 function TaxReserveCard() {
+  const { mode } = useAuth()
   const [tax, setTax] = useState<TaxReserve | null>(null)
   const [editing, setEditing] = useState<number | null>(null)
   const [saving, setSaving] = useState(false)
 
   useEffect(() => {
+    if (mode === 'demo') { setTax(DEMO_TAX); return }
     getTaxReserve().then(setTax).catch(() => setTax(null))
-  }, [])
+  }, [mode])
 
-  if (!tax) return <Card><p className="text-sm text-ink-400">불러오는 중...</p></Card>
+  if (!tax) return <CardSkeleton />
 
   const ratePct = Math.round(tax.rate * 100)
   const filingDate = new Date(tax.nextFilingDate).toLocaleDateString('ko-KR')
@@ -226,18 +235,23 @@ function TaxReserveCard() {
 }
 
 export default function ForecastPage() {
+  const { mode } = useAuth()
   const [forecast, setForecast] = useState<Forecast | null>(null)
   const [error, setError] = useState<string | null>(null)
+  const [retryKey, setRetryKey] = useState(0)
 
   useEffect(() => {
+    if (mode === 'demo') { setForecast(DEMO_FORECAST); return }
+    setForecast(null)
+    setError(null)
     getForecast().then(setForecast).catch((e) => setError(e.message))
-  }, [])
+  }, [mode, retryKey])
 
   if (error) {
-    return <p className="text-sm text-danger">예측 데이터를 불러오지 못했습니다: {error}</p>
+    return <ErrorBanner message={error} onRetry={() => setRetryKey((k) => k + 1)} />
   }
   if (!forecast) {
-    return <p className="text-sm text-ink-400">불러오는 중...</p>
+    return <PageSkeleton />
   }
 
   const { risk, seasonal } = forecast
@@ -251,9 +265,9 @@ export default function ForecastPage() {
   return (
     <div>
       <PageHeader
-        title="AI 현금흐름 예측"
-        subtitle={`매출 패턴·고정비·정산 주기를 결합한 향후 ${forecast.horizonDays}일 잔액 예측`}
-        badge="룰 기반 예측 (MVP)"
+        title="자금 흐름 미리보기"
+        subtitle={`향후 ${forecast.horizonDays}일 예상 잔액을 미리 확인하고 편안하게 대비하세요`}
+        badge="AI 예측"
       />
 
       {/* 위험 경고 배너 */}

@@ -11,8 +11,10 @@ import {
   YAxis,
 } from 'recharts'
 import { AlertTriangle, CalendarClock, Sparkles, TrendingUp, Wallet } from 'lucide-react'
-import { Card, CardTitle, PageHeader, Pill } from '../components/ui'
-import { fmtMan } from '../data/mock'
+import { Card, CardTitle, ErrorBanner, PageHeader, PageSkeleton, Pill } from '../components/ui'
+import { fmtMan } from '../lib/utils'
+import { useAuth } from '../contexts/AuthContext'
+import { DEMO_BRIEFING, DEMO_DASHBOARD, DEMO_HEALTH } from '../data/demoData'
 import {
   getBriefing,
   getDashboardSummary,
@@ -39,7 +41,7 @@ function StatCard({
   return (
     <Card>
       <div className="stat-label">{label}</div>
-      <div className="mt-1 text-2xl font-extrabold tracking-tight">{value}</div>
+      <div className="num mt-1 text-2xl font-extrabold">{value}</div>
       {sub && (
         <div
           className={`mt-1 text-xs font-medium ${
@@ -58,27 +60,36 @@ function StatCard({
 }
 
 export default function Dashboard() {
+  const { mode } = useAuth()
   const [summary, setSummary] = useState<DashboardSummary | null>(null)
   const [healthScore, setHealthScore] = useState<HealthScore | null>(null)
   const [briefing, setBriefing] = useState<Briefing | null>(null)
   const [error, setError] = useState<string | null>(null)
+  const [retryKey, setRetryKey] = useState(0)
 
   useEffect(() => {
+    if (mode === 'demo') {
+      setSummary(DEMO_DASHBOARD)
+      setHealthScore(DEMO_HEALTH)
+      setBriefing(DEMO_BRIEFING)
+      return
+    }
+    setSummary(null)
+    setError(null)
     Promise.all([getDashboardSummary(), getHealthScore()])
       .then(([s, h]) => {
         setSummary(s)
         setHealthScore(h)
       })
       .catch((e) => setError(e.message))
-    // 브리핑은 실패해도 대시보드 본문은 보여야 하므로 별도 처리
     getBriefing().then(setBriefing).catch(() => setBriefing(null))
-  }, [])
+  }, [mode, retryKey])
 
   if (error) {
-    return <p className="text-sm text-danger">대시보드 데이터를 불러오지 못했습니다: {error}</p>
+    return <ErrorBanner message={error} onRetry={() => setRetryKey((k) => k + 1)} />
   }
   if (!summary || !healthScore) {
-    return <p className="text-sm text-ink-400">불러오는 중...</p>
+    return <PageSkeleton />
   }
 
   const { totals, monthlyTrend } = summary
@@ -91,10 +102,25 @@ export default function Dashboard() {
   return (
     <div>
       <PageHeader
-        title="통합 대시보드"
-        subtitle="흩어진 3개 플랫폼의 매출·수수료·순수익을 한 화면에서"
-        badge="2026년 6월 기준"
+        title="오늘의 운영 현황"
+        subtitle="플랫폼별 매출을 한 눈에 모아 편안하게 확인하세요"
+        badge="2026년 6월"
       />
+
+      {/* 자금 부족 알림 */}
+      {briefing?.cashRisk && (
+        <Card className="mb-4 border-l-4 border-l-danger">
+          <div className="flex items-center justify-between">
+            <span className="text-sm font-semibold text-danger">{briefing.cashRisk.period} 자금 부족 구간</span>
+            <span className="text-xs text-ink-400">최저 {fmtMan(toManwon(briefing.cashRisk.lowestBalance))}</span>
+          </div>
+          <p className="mt-2 text-sm leading-relaxed text-ink-600">{briefing.cashRisk.reason}</p>
+          <div className="mt-3 border-t border-stone-100 pt-3">
+            <span className="text-xs font-medium text-ink-400">대응 제안</span>
+            <p className="mt-1 text-sm leading-relaxed text-ink-700">{briefing.cashRisk.suggestion}</p>
+          </div>
+        </Card>
+      )}
 
       {/* 오늘의 브리핑 */}
       {briefing && (
@@ -104,27 +130,25 @@ export default function Dashboard() {
               <Sparkles size={15} className="text-brand-600" /> 오늘의 브리핑
             </span>
           </CardTitle>
-          <div className="grid grid-cols-1 gap-4 md:grid-cols-4">
+          <div className="space-y-4">
+            {/* 예상 잔액 */}
             <div className="rounded-xl bg-brand-50 px-4 py-3">
               <div className="text-xs text-ink-500">오늘 예상 잔액</div>
               <div className="mt-1 text-2xl font-extrabold text-brand-700">
                 {fmtMan(toManwon(briefing.expectedBalance))}
               </div>
             </div>
+            {/* 이번 주 정산 */}
             <div>
-              <div className="flex items-center gap-1 text-xs font-medium text-ink-500">
+              <div className="flex items-center gap-1 text-xs font-medium text-ink-500 mb-1.5">
                 <CalendarClock size={13} /> 이번 주 정산
               </div>
-              <ul className="mt-1.5 space-y-1 text-sm">
+              <ul className="space-y-1 text-sm">
                 {briefing.weekSettlement.length ? (
                   briefing.weekSettlement.map((s, i) => (
                     <li key={i} className="flex justify-between gap-2">
-                      <span className="text-ink-600">
-                        {s.date} {s.platform}
-                      </span>
-                      <span className="font-semibold text-positive">
-                        +{fmtMan(toManwon(s.amount))}
-                      </span>
+                      <span className="text-ink-600">{s.date} {s.platform}</span>
+                      <span className="font-semibold text-positive">+{fmtMan(toManwon(s.amount))}</span>
                     </li>
                   ))
                 ) : (
@@ -132,28 +156,21 @@ export default function Dashboard() {
                 )}
               </ul>
             </div>
+            {/* 임박 지출 */}
             <div>
-              <div className="flex items-center gap-1 text-xs font-medium text-ink-500">
+              <div className="flex items-center gap-1 text-xs font-medium text-ink-500 mb-1.5">
                 <Wallet size={13} /> 임박 지출
               </div>
-              <ul className="mt-1.5 space-y-1 text-sm">
+              <ul className="space-y-1 text-sm">
                 {briefing.upcoming.map((u, i) => (
                   <li key={i} className="flex justify-between gap-2">
                     <span className={u.urgent ? 'font-medium text-danger' : 'text-ink-600'}>
                       {u.date} {u.label}
                     </span>
-                    <span className="font-semibold text-ink-700">
-                      -{fmtMan(toManwon(u.amount))}
-                    </span>
+                    <span className="font-semibold text-ink-700">-{fmtMan(toManwon(u.amount))}</span>
                   </li>
                 ))}
               </ul>
-            </div>
-            <div className="rounded-xl bg-amber-50 px-4 py-3">
-              <div className="flex items-center gap-1 text-xs font-medium text-amber-700">
-                <AlertTriangle size={13} /> 공실 위험
-              </div>
-              <p className="mt-1 text-xs leading-relaxed text-amber-900">{briefing.vacancy}</p>
             </div>
           </div>
         </Card>
