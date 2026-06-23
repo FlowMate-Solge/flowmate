@@ -13,6 +13,8 @@ import taxReserveRouter from './routes/taxReserve.js'
 import healthScoreRouter from './routes/healthScore.js'
 import aiRouter from './routes/ai.js'
 import briefingRouter from './routes/briefing.js'
+import businessRouter from './routes/business.js'
+import authRouter from './routes/auth.js'
 
 const app = express()
 const PORT = process.env.PORT ?? 4000
@@ -24,6 +26,8 @@ app.get('/health', (_req, res) => {
   res.json({ ok: true })
 })
 
+app.use('/api/auth', authRouter)
+app.use('/api/business', businessRouter)
 app.use('/api/platforms', platformsRouter)
 app.use('/api/sales', salesRouter)
 app.use('/api/dashboard', dashboardRouter)

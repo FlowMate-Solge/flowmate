@@ -56,3 +56,12 @@ model RoiInput {
   avgMonthlyNet Int
   createdAt     DateTime @default(now())
 }
+
+model Business {
+  id        Int      @id @default(autoincrement())
+  name      String   // 사업장명
+  type      String   // 업종 (파티룸, 게스트하우스 등)
+  ownerName String   // 대표자명
+  yearsOpen Int      @default(1)
+  updatedAt DateTime @updatedAt
+}
