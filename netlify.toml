@@ -1,0 +1,11 @@
+# 모노레포: frontend/ 만 빌드해서 배포 (데모 모드는 백엔드 불필요)
+[build]
+  base = "frontend"
+  command = "npm run build"
+  publish = "dist"
+
+# SPA — react-router 경로 새로고침 시 index.html로 폴백
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200
