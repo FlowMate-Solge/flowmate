@@ -19,9 +19,29 @@ body {
   -webkit-font-smoothing: antialiased;
 }
 
+/* 제목·숫자에 Outfit 적용 */
+h1, h2 {
+  font-family: 'Outfit', 'Pretendard', system-ui, sans-serif;
+}
+
+/* 금액·수치 숫자 — tabular, Outfit */
+.num {
+  font-family: 'Outfit', system-ui, sans-serif;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.02em;
+}
+
+/* 모바일 앱 느낌 — 스크롤바 숨김 */
+* {
+  scrollbar-width: none;
+}
+*::-webkit-scrollbar {
+  display: none;
+}
+
 @layer components {
   .card {
-    @apply rounded-2xl bg-white shadow-card border border-slate-100;
+    @apply rounded-2xl bg-white shadow-card border border-stone-100;
   }
   .stat-label {
     @apply text-sm text-ink-500;

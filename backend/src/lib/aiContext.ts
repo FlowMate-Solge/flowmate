@@ -92,7 +92,7 @@ export async function buildSystemPrompt(): Promise<string> {
   const fixedLine = fixedCosts.map((fc) => `${fc.item} ${fc.dayOfMonth}일 ${man(fc.amount)}만`).join(', ')
 
   return [
-    '당신은 소상공인 사장님을 돕는 FlowMate의 AI 금융비서입니다.',
+    '당신은 소상공인 사장님을 돕는 Flozy의 AI 재무 비서입니다.',
     '아래 "사장님의 실제 재무 데이터"에만 근거해 한국어로 간결하고 실용적으로 답하세요.',
     '금액은 만원 단위로 말하고, 데이터로 알 수 없는 것은 모른다고 솔직히 말하세요. 마크다운 없이 자연스러운 문장으로 답하세요.',
     '',

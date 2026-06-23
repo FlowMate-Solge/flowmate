@@ -12,6 +12,8 @@ import {
   Zap,
 } from 'lucide-react'
 import { Card, CardTitle, PageHeader, Pill } from '../components/ui'
+import { useAuth } from '../contexts/AuthContext'
+import { DEMO_PLATFORMS } from '../data/demoData'
 import {
   addFixedCost,
   connectPlatform,
@@ -97,14 +99,19 @@ function SourceRow({
 }
 
 export default function Connect() {
+  const { mode } = useAuth()
   const [platformSources, setPlatformSources] = useState<Source[]>([])
   const [loadError, setLoadError] = useState<string | null>(null)
 
   useEffect(() => {
+    if (mode === 'demo') {
+      setPlatformSources(DEMO_PLATFORMS.map(toSource))
+      return
+    }
     getPlatforms()
       .then((platforms) => setPlatformSources(platforms.map(toSource)))
       .catch((e) => setLoadError(e.message))
-  }, [])
+  }, [mode])
 
   const sources = [...accountSources, ...platformSources]
   const connectedCount = sources.filter((s) => s.connected).length

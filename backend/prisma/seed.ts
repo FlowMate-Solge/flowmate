@@ -56,6 +56,7 @@ async function main() {
   await prisma.fixedCost.deleteMany()
   await prisma.taxReserve.deleteMany()
   await prisma.roiInput.deleteMany()
+  await prisma.business.deleteMany()
 
   for (const p of platforms) {
     const created = await prisma.platform.create({ data: p })
@@ -98,6 +99,15 @@ async function main() {
       investment: 50_000_000,
       monthlyFixed: 4_150_000,
       avgMonthlyNet: 6_950_000,
+    },
+  })
+
+  await prisma.business.create({
+    data: {
+      name: '무드살롱 홍대점',
+      type: '파티룸',
+      ownerName: '김민수',
+      yearsOpen: 2,
     },
   })
 

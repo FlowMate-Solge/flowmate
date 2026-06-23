@@ -75,9 +75,19 @@ export interface PriceBenchmark {
   insight: string
 }
 
+export interface PolicyFund {
+  name: string
+  org: string
+  desc: string
+  target: string
+  deadline: string
+  url: string
+}
+
 export interface PolicyFunds {
-  funds: { name: string; desc: string }[]
+  funds: PolicyFund[]
   note: string
+  source?: 'live' | 'curated'
 }
 
 export function getPlatformStrategy() {
@@ -204,6 +214,12 @@ export interface Briefing {
   weekSettlement: { platform: string; amount: number; date: string }[]
   upcoming: { label: string; amount: number; date: string; urgent: boolean }[]
   vacancy: string
+  cashRisk?: {
+    period: string       // "6/25~6/27"
+    lowestBalance: number // 원
+    reason: string
+    suggestion: string
+  }
 }
 
 export interface AiAnswer {
@@ -214,6 +230,19 @@ export interface AiAnswer {
 
 export function getBriefing() {
   return request<Briefing>('/api/briefing/today')
+}
+
+export interface Business {
+  id: number
+  name: string
+  type: string
+  ownerName: string
+  yearsOpen: number
+  lastDataAt: string | null
+}
+
+export function getBusiness() {
+  return request<Business>('/api/business')
 }
 
 export function askAi(question: string) {
