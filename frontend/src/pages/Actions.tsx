@@ -1,14 +1,16 @@
+import { useEffect, useState } from 'react'
 import { ChevronRight, MapPin, TrendingUp, Wallet } from 'lucide-react'
 import { Card, PageHeader, Pill } from '../components/ui'
 import {
-  platformStrategy,
-  policyFundNote,
-  policyFunds,
-  priceBenchmark,
-  priceHeadroom,
-} from '../data/mock'
+  getPlatformStrategy,
+  getPolicyFunds,
+  getPriceBenchmark,
+  type PlatformStrategy,
+  type PolicyFunds,
+  type PriceBenchmark,
+} from '../lib/api'
 
-const toneStyle = {
+const toneStyle: Record<PlatformStrategy['tone'], string> = {
   positive: 'border-l-positive',
   warning: 'border-l-warning',
   neutral: 'border-l-brand-400',
@@ -16,15 +18,37 @@ const toneStyle = {
 
 const fmtWonRaw = (won: number) => `₩${won.toLocaleString('ko-KR')}`
 
-// 저가~고가 구간 내 상대 위치(%)
-const pos = (won: number) =>
-  ((won - priceBenchmark.low) / (priceBenchmark.high - priceBenchmark.low)) * 100
-
-// 골든 최적가 주변 권장 구간 (±5천원)
-const goldenLeft = pos(priceBenchmark.golden - 5000)
-const goldenWidth = pos(priceBenchmark.golden + 5000) - goldenLeft
-
 export default function Actions() {
+  const [price, setPrice] = useState<PriceBenchmark | null>(null)
+  const [strategies, setStrategies] = useState<PlatformStrategy[] | null>(null)
+  const [policy, setPolicy] = useState<PolicyFunds | null>(null)
+  const [error, setError] = useState<string | null>(null)
+
+  useEffect(() => {
+    Promise.all([getPriceBenchmark(), getPlatformStrategy(), getPolicyFunds()])
+      .then(([p, s, f]) => {
+        setPrice(p)
+        setStrategies(s)
+        setPolicy(f)
+      })
+      .catch((e) => setError(e.message))
+  }, [])
+
+  if (error) {
+    return <p className="text-sm text-danger">행동 추천 데이터를 불러오지 못했습니다: {error}</p>
+  }
+  if (!price || !strategies || !policy) {
+    return <p className="text-sm text-ink-400">불러오는 중...</p>
+  }
+
+  const b = price.benchmark
+  // 저가~고가 구간 내 상대 위치(%)
+  const pos = (won: number) => ((won - b.low) / (b.high - b.low)) * 100
+  // 골든 최적가 주변 권장 구간 (±5천원)
+  const goldenLeft = pos(b.golden - 5000)
+  const goldenWidth = pos(b.golden + 5000) - goldenLeft
+  const maxShare = Math.max(...price.bands.map((x) => x.share))
+
   return (
     <div>
       <PageHeader
@@ -51,21 +75,17 @@ export default function Actions() {
           사장님의 스튜디오가 속한 지산/파티룸 지역 상권의 표준 시간당 요금 대조선입니다.
           <br />
           현재 사장님 대비 매출 극대화 한계 수익점은 시간당{' '}
-          <b className="text-ink-900">2만 5천 원</b>선입니다.
+          <b className="text-ink-900">{fmtWonRaw(b.golden)}</b>선입니다.
         </p>
 
         {/* 시세 슬라이더 */}
         <div className="mt-6">
           <div className="flex justify-between text-xs">
-            <span className="text-ink-400">
-              저가 구간 ({fmtWonRaw(priceBenchmark.low)})
-            </span>
+            <span className="text-ink-400">저가 구간 ({fmtWonRaw(b.low)})</span>
             <span className="font-semibold text-positive">
-              이 지역 골든 최적가 ({fmtWonRaw(priceBenchmark.golden)})
+              이 지역 골든 최적가 ({fmtWonRaw(b.golden)})
             </span>
-            <span className="text-ink-400">
-              고가 구간 ({fmtWonRaw(priceBenchmark.high)})
-            </span>
+            <span className="text-ink-400">고가 구간 ({fmtWonRaw(b.high)})</span>
           </div>
 
           <div className="relative mt-2.5 h-3 rounded-full bg-slate-100">
@@ -77,24 +97,45 @@ export default function Actions() {
             {/* 현재 책정가 핸들 */}
             <div
               className="absolute top-1/2 h-5 w-5 -translate-x-1/2 -translate-y-1/2 rounded-full border-4 border-white bg-brand-600 shadow-card"
-              style={{ left: `${pos(priceBenchmark.current)}%` }}
+              style={{ left: `${pos(b.current)}%` }}
             />
           </div>
 
           <div className="mt-3 flex justify-between text-xs">
             <span className="text-ink-500">
               현재 책정가:{' '}
-              <b className="text-ink-900">{fmtWonRaw(priceBenchmark.current)}/시</b>
+              <b className="text-ink-900">{fmtWonRaw(b.current)}/시</b>
             </span>
             <span className="font-medium text-brand-600">
-              골든 최적가 대비 {fmtWonRaw(priceHeadroom)} 저렴 (인상 여유 있음)
+              골든 최적가 대비 {fmtWonRaw(price.headroom)} 저렴 (인상 여유 있음)
             </span>
           </div>
         </div>
 
-        <p className="mt-5 border-t border-slate-100 pt-4 text-sm italic text-ink-400">
-          &quot;주말에는 최대 {fmtWonRaw(priceBenchmark.weekendMax)}까지 인상하셔도 전환 하락이 없습니다&quot;
-        </p>
+        {/* 소비자 선호 가격대 분포 */}
+        <div className="mt-6 border-t border-slate-100 pt-4">
+          <div className="mb-2 text-xs font-medium text-ink-500">
+            소비자 선호 가격대 분포
+          </div>
+          <div className="space-y-1.5">
+            {price.bands.map((band) => (
+              <div key={band.band} className="flex items-center gap-2 text-xs">
+                <span className="w-12 shrink-0 text-ink-400">{band.band}</span>
+                <div className="h-2.5 flex-1 rounded-full bg-slate-100">
+                  <div
+                    className={`h-2.5 rounded-full ${band.share === maxShare ? 'bg-positive' : 'bg-brand-400'}`}
+                    style={{ width: `${band.share}%` }}
+                  />
+                </div>
+                <span className="w-8 shrink-0 text-right font-medium">{band.share}%</span>
+              </div>
+            ))}
+          </div>
+          <p className="mt-3 text-sm italic text-ink-400">&quot;{price.insight}&quot;</p>
+          <p className="mt-2 text-sm italic text-ink-400">
+            &quot;주말에는 최대 {fmtWonRaw(b.weekendMax)}까지 인상하셔도 전환 하락이 없습니다&quot;
+          </p>
+        </div>
       </Card>
 
       {/* ② 오늘의 행동 추천 */}
@@ -104,7 +145,7 @@ export default function Actions() {
           오늘의 행동 추천
         </h2>
         <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
-          {platformStrategy.map((s) => (
+          {strategies.map((s) => (
             <Card key={s.title} className={`border-l-4 ${toneStyle[s.tone]}`}>
               <div className="font-bold">{s.title}</div>
               <p className="mt-1.5 text-sm leading-relaxed text-ink-500">{s.body}</p>
@@ -121,7 +162,7 @@ export default function Actions() {
         </h2>
         <Card>
           <div className="space-y-3">
-            {policyFunds.map((p) => (
+            {policy.funds.map((p) => (
               <button
                 key={p.name}
                 className="flex w-full items-center justify-between rounded-xl border border-slate-100 bg-slate-50 px-4 py-3.5 text-left transition hover:border-brand-200 hover:bg-brand-50"
@@ -134,7 +175,7 @@ export default function Actions() {
               </button>
             ))}
           </div>
-          <p className="mt-3 text-xs text-ink-400">{policyFundNote}</p>
+          <p className="mt-3 text-xs text-ink-400">{policy.note}</p>
         </Card>
       </div>
     </div>

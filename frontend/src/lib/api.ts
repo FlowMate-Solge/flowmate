@@ -56,6 +56,42 @@ export interface PlatformBreakdown {
   }[]
 }
 
+export interface PlatformStrategy {
+  title: string
+  body: string
+  tone: 'positive' | 'warning' | 'neutral'
+}
+
+export interface PriceBenchmark {
+  benchmark: {
+    low: number
+    golden: number
+    high: number
+    current: number
+    weekendMax: number
+  }
+  headroom: number // 골든 최적가 대비 인상 여유(원)
+  bands: { band: string; share: number }[]
+  insight: string
+}
+
+export interface PolicyFunds {
+  funds: { name: string; desc: string }[]
+  note: string
+}
+
+export function getPlatformStrategy() {
+  return request<PlatformStrategy[]>('/api/platform-strategy')
+}
+
+export function getPriceBenchmark() {
+  return request<PriceBenchmark>('/api/price-benchmark')
+}
+
+export function getPolicyFunds() {
+  return request<PolicyFunds>('/api/policy-funds')
+}
+
 export interface ForecastDay {
   date: string
   label: string
