@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import {
   Area,
   AreaChart,
@@ -12,13 +12,21 @@ import {
 } from 'recharts'
 import { AlertTriangle, Calculator, PiggyBank } from 'lucide-react'
 import { Card, CardTitle, PageHeader, Pill } from '../components/ui'
+import { fmtMan } from '../data/mock'
 import {
-  dailyForecast,
-  fmtMan,
-  riskAlert,
-  roiDefaults,
-  taxReserve,
-} from '../data/mock'
+  calculateRoi,
+  getForecast,
+  getRoiDefaults,
+  getTaxReserve,
+  updateTaxReserve,
+  type Forecast,
+  type RoiInput,
+  type RoiResult,
+  type TaxReserve,
+} from '../lib/api'
+
+// 백엔드는 원 단위, 화면은 만원 단위
+const toManwon = (won: number) => Math.round(won / 10_000)
 
 function ForecastTooltip({ active, payload }: any) {
   if (!active || !payload?.length) return null
@@ -35,18 +43,38 @@ function ForecastTooltip({ active, payload }: any) {
 }
 
 function RoiCalculator() {
-  const [investment, setInvestment] = useState(roiDefaults.investment)
-  const [fixed, setFixed] = useState(roiDefaults.monthlyFixed)
-  const [net, setNet] = useState(roiDefaults.avgMonthlyNet)
+  const [input, setInput] = useState<RoiInput | null>(null)
+  const [result, setResult] = useState<RoiResult | null>(null)
 
-  const monthlyProfit = net - fixed
-  const months = monthlyProfit > 0 ? investment / monthlyProfit : Infinity
-  const valid = monthlyProfit > 0
+  // 기본값(원) → 만원 단위로 변환해 입력 폼에 표시
+  useEffect(() => {
+    getRoiDefaults()
+      .then((d) => setInput({
+        investment: toManwon(d.investment),
+        monthlyFixed: toManwon(d.monthlyFixed),
+        avgMonthlyNet: toManwon(d.avgMonthlyNet),
+      }))
+      .catch(() => setInput({ investment: 0, monthlyFixed: 0, avgMonthlyNet: 0 }))
+  }, [])
+
+  // 입력(만원) → 원으로 환산해 백엔드 계산 호출
+  useEffect(() => {
+    if (!input) return
+    calculateRoi({
+      investment: input.investment * 10_000,
+      monthlyFixed: input.monthlyFixed * 10_000,
+      avgMonthlyNet: input.avgMonthlyNet * 10_000,
+    })
+      .then(setResult)
+      .catch(() => setResult(null))
+  }, [input])
+
+  if (!input) return <Card><p className="text-sm text-ink-400">불러오는 중...</p></Card>
 
   const fields = [
-    { label: '초기 투자비', value: investment, set: setInvestment },
-    { label: '월 고정비', value: fixed, set: setFixed },
-    { label: '월 평균 순수익', value: net, set: setNet },
+    { key: 'investment' as const, label: '초기 투자비' },
+    { key: 'monthlyFixed' as const, label: '월 고정비' },
+    { key: 'avgMonthlyNet' as const, label: '월 평균 순수익' },
   ]
 
   return (
@@ -63,12 +91,12 @@ function RoiCalculator() {
 
       <div className="space-y-3">
         {fields.map((f) => (
-          <label key={f.label} className="block">
+          <label key={f.key} className="block">
             <span className="text-xs text-ink-500">{f.label} (만원)</span>
             <input
               type="number"
-              value={f.value}
-              onChange={(e) => f.set(Number(e.target.value))}
+              value={input[f.key]}
+              onChange={(e) => setInput({ ...input, [f.key]: Number(e.target.value) })}
               className="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm outline-none focus:border-brand-400"
             />
           </label>
@@ -77,13 +105,13 @@ function RoiCalculator() {
 
       <div className="mt-4 rounded-xl bg-brand-600 p-4 text-white">
         <div className="text-xs opacity-80">예상 손익분기점</div>
-        {valid ? (
+        {result?.recoverable && result.months != null ? (
           <>
             <div className="mt-1 text-3xl font-extrabold">
-              {months.toFixed(1)}개월
+              {result.months.toFixed(1)}개월
             </div>
             <div className="mt-1 text-xs opacity-80">
-              월 {fmtMan(monthlyProfit)}씩 회수 · 2027년 상반기 도달 예상
+              월 {fmtMan(toManwon(result.monthlyProfit))}씩 회수
             </div>
           </>
         ) : (
@@ -97,12 +125,37 @@ function RoiCalculator() {
 }
 
 function TaxReserveCard() {
+  const [tax, setTax] = useState<TaxReserve | null>(null)
+  const [editing, setEditing] = useState<number | null>(null)
+  const [saving, setSaving] = useState(false)
+
+  useEffect(() => {
+    getTaxReserve().then(setTax).catch(() => setTax(null))
+  }, [])
+
+  if (!tax) return <Card><p className="text-sm text-ink-400">불러오는 중...</p></Card>
+
+  const ratePct = Math.round(tax.rate * 100)
+  const filingDate = new Date(tax.nextFilingDate).toLocaleDateString('ko-KR')
+
+  async function save() {
+    if (editing == null) return
+    setSaving(true)
+    try {
+      const updated = await updateTaxReserve({ currentBalance: editing * 10_000 })
+      setTax(updated)
+      setEditing(null)
+    } finally {
+      setSaving(false)
+    }
+  }
+
   return (
     <Card>
       <CardTitle
         right={
           <span className="inline-flex items-center gap-1 text-xs text-ink-400">
-            <PiggyBank size={13} /> 매출의 {taxReserve.rate * 100}%
+            <PiggyBank size={13} /> 매출의 {ratePct}%
           </span>
         }
       >
@@ -113,62 +166,132 @@ function TaxReserveCard() {
         <div className="rounded-xl bg-slate-50 px-4 py-4 text-center">
           <div className="text-xs text-ink-400">이번 달 매출</div>
           <div className="mt-1.5 text-2xl font-extrabold tracking-tight">
-            {fmtMan(taxReserve.monthlyRevenue)}
+            {fmtMan(toManwon(tax.monthlyRevenue))}
           </div>
         </div>
         <div className="rounded-xl bg-slate-50 px-4 py-4 text-center">
-          <div className="text-xs text-ink-400">
-            필요 예비금({taxReserve.rate * 100}%)
-          </div>
+          <div className="text-xs text-ink-400">필요 예비금({ratePct}%)</div>
           <div className="mt-1.5 text-2xl font-extrabold tracking-tight text-brand-600">
-            {fmtMan(taxReserve.recommended)}
+            {fmtMan(toManwon(tax.recommended))}
           </div>
         </div>
       </div>
 
+      {/* 현재 보유액 + 수정 */}
+      <div className="mt-3 flex items-center justify-between rounded-xl border border-slate-100 px-4 py-3 text-sm">
+        <span className="text-ink-500">현재 세금통장</span>
+        {editing == null ? (
+          <span className="flex items-center gap-2">
+            <b>{fmtMan(toManwon(tax.currentBalance))}</b>
+            <button
+              onClick={() => setEditing(toManwon(tax.currentBalance))}
+              className="text-xs text-brand-600 hover:underline"
+            >
+              수정
+            </button>
+          </span>
+        ) : (
+          <span className="flex items-center gap-1.5">
+            <input
+              type="number"
+              value={editing}
+              onChange={(e) => setEditing(Number(e.target.value))}
+              className="w-24 rounded-lg border border-slate-200 px-2 py-1 text-right text-sm outline-none focus:border-brand-400"
+            />
+            <span className="text-xs text-ink-400">만원</span>
+            <button
+              onClick={save}
+              disabled={saving}
+              className="rounded-lg bg-brand-600 px-2 py-1 text-xs font-medium text-white disabled:opacity-50"
+            >
+              저장
+            </button>
+          </span>
+        )}
+      </div>
+
       <div className="mt-4 rounded-xl bg-amber-50 px-3 py-2.5 text-xs text-amber-900">
-        <b>{taxReserve.filingType}</b>가 {taxReserve.nextFiling}에 예정되어 있어요.
-        매출의 {taxReserve.rate * 100}%인 {fmtMan(taxReserve.recommended)}을 미리
-        분리해 두면 신고 시점에 당황하지 않습니다.
+        <b>{tax.filingType}</b>가 {filingDate}에 예정되어 있어요.{' '}
+        {tax.shortfall > 0 ? (
+          <>
+            권장 예비금까지 <b>{fmtMan(toManwon(tax.shortfall))}</b>이 부족합니다. 신고
+            시점 전에 미리 분리해 두세요.
+          </>
+        ) : (
+          <>권장 예비금을 이미 확보했습니다. 안정적입니다.</>
+        )}
       </div>
     </Card>
   )
 }
 
-export default function Forecast() {
+export default function ForecastPage() {
+  const [forecast, setForecast] = useState<Forecast | null>(null)
+  const [error, setError] = useState<string | null>(null)
+
+  useEffect(() => {
+    getForecast().then(setForecast).catch((e) => setError(e.message))
+  }, [])
+
+  if (error) {
+    return <p className="text-sm text-danger">예측 데이터를 불러오지 못했습니다: {error}</p>
+  }
+  if (!forecast) {
+    return <p className="text-sm text-ink-400">불러오는 중...</p>
+  }
+
+  const { risk, seasonal } = forecast
+  const chartData = forecast.days.map((d) => ({
+    label: d.label,
+    balance: toManwon(d.balance),
+    event: d.event,
+  }))
+  const safetyMan = toManwon(forecast.safetyLine)
+
   return (
     <div>
       <PageHeader
         title="AI 현금흐름 예측"
-        subtitle="매출 패턴·고정비·정산 주기를 결합한 향후 30일 잔액 예측"
+        subtitle={`매출 패턴·고정비·정산 주기를 결합한 향후 ${forecast.horizonDays}일 잔액 예측`}
         badge="룰 기반 예측 (MVP)"
       />
 
       {/* 위험 경고 배너 */}
-      <div className="mb-4 flex items-start gap-3 rounded-2xl border border-red-100 bg-red-50 p-4">
-        <div className="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-danger text-white">
-          <AlertTriangle size={18} />
-        </div>
-        <div>
-          <div className="font-bold text-danger">
-            {riskAlert.date} 자금 부족 위험
+      {risk && (
+        <div className="mb-4 flex items-start gap-3 rounded-2xl border border-red-100 bg-red-50 p-4">
+          <div className="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-danger text-white">
+            <AlertTriangle size={18} />
           </div>
-          <p className="mt-0.5 text-sm text-ink-700">{riskAlert.reason}</p>
-          <p className="mt-1 text-sm text-ink-700">
-            💡 <b>대응:</b> {riskAlert.suggestion}
-          </p>
+          <div>
+            <div className="font-bold text-danger">
+              {risk.startLabel}~{risk.endLabel} 자금 부족 위험
+            </div>
+            <p className="mt-0.5 text-sm text-ink-700">{risk.reason}</p>
+            <p className="mt-1 text-sm text-ink-700">
+              💡 <b>대응:</b> {risk.suggestion}
+            </p>
+          </div>
         </div>
-      </div>
+      )}
 
       {/* 일별 잔액 예측 그래프 */}
       <Card>
         <CardTitle
-          right={<Pill tone="danger">6/25~27 위험 구간</Pill>}
+          right={
+            risk ? (
+              <Pill tone="danger">
+                {risk.startLabel}~{risk.endLabel} 위험 구간
+              </Pill>
+            ) : (
+              <Pill tone="brand">안전</Pill>
+            )
+          }
         >
-          일별 예상 잔액 (6/19 ~ 7/19)
+          일별 예상 잔액 ({forecast.days[0]?.label} ~{' '}
+          {forecast.days[forecast.days.length - 1]?.label})
         </CardTitle>
         <ResponsiveContainer width="100%" height={300}>
-          <AreaChart data={dailyForecast} margin={{ left: -8, right: 8 }}>
+          <AreaChart data={chartData} margin={{ left: -8, right: 8 }}>
             <defs>
               <linearGradient id="bal" x1="0" y1="0" x2="0" y2="1">
                 <stop offset="0%" stopColor="#3366ff" stopOpacity={0.25} />
@@ -186,15 +309,25 @@ export default function Forecast() {
             />
             <YAxis tickLine={false} axisLine={false} fontSize={11} />
             <Tooltip content={<ForecastTooltip />} />
-            {/* 안전선 50만 */}
             <ReferenceLine
-              y={50}
+              y={safetyMan}
               stroke="#dc2626"
               strokeDasharray="4 4"
-              label={{ value: '안전선 50만', position: 'insideTopRight', fontSize: 10, fill: '#dc2626' }}
+              label={{
+                value: `안전선 ${safetyMan}만`,
+                position: 'insideTopRight',
+                fontSize: 10,
+                fill: '#dc2626',
+              }}
             />
-            {/* 위험 구간 음영 */}
-            <ReferenceArea x1="06-25" x2="06-27" fill="#dc2626" fillOpacity={0.06} />
+            {risk && (
+              <ReferenceArea
+                x1={risk.startLabel}
+                x2={risk.endLabel}
+                fill="#dc2626"
+                fillOpacity={0.06}
+              />
+            )}
             <Area
               type="monotone"
               dataKey="balance"
@@ -205,12 +338,25 @@ export default function Forecast() {
           </AreaChart>
         </ResponsiveContainer>
         <div className="mt-2 flex flex-wrap gap-x-6 gap-y-1 text-xs text-ink-400">
-          <span>● 6/21 네이버 정산 +35만</span>
-          <span>● 6/25 임대료 -280만</span>
-          <span>● 7/10 스페이스클라우드 정산 +378만</span>
-          <span>● 7/15 아워플레이스 정산 +158만</span>
+          {forecast.settlements.map((s) => (
+            <span key={s.date}>
+              ● {s.date.slice(5).replace('-', '/').replace(/^0/, '')} {s.label} +
+              {toManwon(s.amount)}만
+            </span>
+          ))}
         </div>
       </Card>
+
+      {/* 성수기/비수기 신호 */}
+      {seasonal.peakMessage && (
+        <div className="mt-4 flex items-start gap-3 rounded-2xl border border-brand-100 bg-brand-50 p-4 text-sm text-brand-800">
+          <span className="text-lg">{seasonal.trend === 'up' ? '📈' : seasonal.trend === 'down' ? '📉' : '➡️'}</span>
+          <div>
+            <p>{seasonal.peakMessage}</p>
+            <p className="mt-1 text-ink-600">{seasonal.prepMessage}</p>
+          </div>
+        </div>
+      )}
 
       <div className="mt-4 grid grid-cols-1 gap-4 lg:grid-cols-2">
         <RoiCalculator />

@@ -56,6 +56,112 @@ export interface PlatformBreakdown {
   }[]
 }
 
+export interface ForecastDay {
+  date: string
+  label: string
+  balance: number // 원
+  event?: string
+  risk?: boolean
+}
+
+export interface Settlement {
+  date: string // YYYY-MM-DD
+  amount: number // 원
+  label: string
+}
+
+export interface RiskAlert {
+  startLabel: string
+  endLabel: string
+  lowestLabel: string
+  lowestBalance: number // 원
+  shortfall: number // 원
+  reason: string
+  suggestion: string
+}
+
+export interface Seasonal {
+  trend: 'up' | 'down' | 'flat'
+  growthPct: number
+  peakMessage: string
+  prepMessage: string
+}
+
+export interface Forecast {
+  baseDate: string
+  horizonDays: number
+  startBalance: number
+  safetyLine: number // 원
+  days: ForecastDay[]
+  settlements: Settlement[]
+  risk: RiskAlert | null
+  seasonal: Seasonal
+}
+
+export interface RoiInput {
+  investment: number
+  monthlyFixed: number
+  avgMonthlyNet: number
+}
+
+export interface RoiResult {
+  monthlyProfit: number
+  recoverable: boolean
+  months: number | null
+}
+
+export interface TaxReserve {
+  rate: number
+  currentBalance: number // 원
+  nextFilingDate: string
+  filingType: string
+  monthlyRevenue: number // 원
+  recommended: number // 원
+  shortfall: number // 원
+}
+
+export interface HealthFactor {
+  label: string
+  score: number
+  note: string
+}
+
+export interface HealthScore {
+  total: number
+  grade: string
+  factors: HealthFactor[]
+}
+
+export function getForecast() {
+  return request<Forecast>('/api/forecast/daily-balance')
+}
+
+export function getRoiDefaults() {
+  return request<RoiInput>('/api/roi/defaults')
+}
+
+export function calculateRoi(data: RoiInput) {
+  return request<RoiResult>('/api/roi/calculate', {
+    method: 'POST',
+    body: JSON.stringify(data),
+  })
+}
+
+export function getTaxReserve() {
+  return request<TaxReserve>('/api/tax-reserve')
+}
+
+export function updateTaxReserve(data: { currentBalance: number; rate?: number }) {
+  return request<TaxReserve>('/api/tax-reserve', {
+    method: 'POST',
+    body: JSON.stringify(data),
+  })
+}
+
+export function getHealthScore() {
+  return request<HealthScore>('/api/health-score')
+}
+
 export function getPlatforms() {
   return request<PlatformSummary[]>('/api/platforms')
 }
