@@ -7,6 +7,10 @@ import fixedCostsRouter from './routes/fixedCosts.js'
 import strategyRouter from './routes/strategy.js'
 import priceBenchmarkRouter from './routes/priceBenchmark.js'
 import policyFundsRouter from './routes/policyFunds.js'
+import forecastRouter from './routes/forecast.js'
+import roiRouter from './routes/roi.js'
+import taxReserveRouter from './routes/taxReserve.js'
+import healthScoreRouter from './routes/healthScore.js'
 
 const app = express()
 const PORT = process.env.PORT ?? 4000
@@ -25,6 +29,10 @@ app.use('/api/fixed-costs', fixedCostsRouter)
 app.use('/api/platform-strategy', strategyRouter)
 app.use('/api/price-benchmark', priceBenchmarkRouter)
 app.use('/api/policy-funds', policyFundsRouter)
+app.use('/api/forecast', forecastRouter)
+app.use('/api/roi', roiRouter)
+app.use('/api/tax-reserve', taxReserveRouter)
+app.use('/api/health-score', healthScoreRouter)
 
 app.use((err: Error, _req: express.Request, res: express.Response, _next: express.NextFunction) => {
   console.error(err)
