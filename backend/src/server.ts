@@ -11,6 +11,8 @@ import forecastRouter from './routes/forecast.js'
 import roiRouter from './routes/roi.js'
 import taxReserveRouter from './routes/taxReserve.js'
 import healthScoreRouter from './routes/healthScore.js'
+import aiRouter from './routes/ai.js'
+import briefingRouter from './routes/briefing.js'
 
 const app = express()
 const PORT = process.env.PORT ?? 4000
@@ -33,6 +35,8 @@ app.use('/api/forecast', forecastRouter)
 app.use('/api/roi', roiRouter)
 app.use('/api/tax-reserve', taxReserveRouter)
 app.use('/api/health-score', healthScoreRouter)
+app.use('/api/ai', aiRouter)
+app.use('/api/briefing', briefingRouter)
 
 app.use((err: Error, _req: express.Request, res: express.Response, _next: express.NextFunction) => {
   console.error(err)

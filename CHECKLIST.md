@@ -83,11 +83,11 @@ flowmate/
 > 화면: `AiAssistant.tsx`, Dashboard 상단 브리핑 카드
 > `AiAssistant.tsx` 6번 줄 주석에 이미 연동 방향이 적혀있음: 재무 데이터를 system 프롬프트로 넣고 `messages.create()` 호출
 
-- [ ] `ANTHROPIC_API_KEY`는 **백엔드 서버에서만** 사용 (프론트에 노출 금지)
-- [ ] `POST /api/ai/ask` — `{ question }` 받아서 Phase 2~4 API 데이터를 모아 system 프롬프트로 구성 → Claude API 호출 → 답변 반환
-- [ ] `GET /api/briefing/today` — 오늘 예상 잔액 / 이번 주 정산 / 임박 세금·고정비 / 공실 위험 (mock의 `briefing`)
-- [ ] 프론트 `AiAssistant.tsx`의 `getAnswer()` 프리셋 함수를 실제 API 호출로 교체
-- [ ] Dashboard에 오늘의 브리핑 카드 연결
+- [x] `ANTHROPIC_API_KEY`는 **백엔드 서버에서만** 사용 (프론트에 노출 금지) — `routes/ai.ts`가 `process.env`에서만 읽음, 키 미설정 시 안내 반환
+- [x] `POST /api/ai/ask` — `{ question }` 받아서 Phase 2~4 데이터를 system 프롬프트로 구성(`lib/aiContext.ts`) → Claude API(`@anthropic-ai/sdk`, 기본 `claude-opus-4-8`) 호출 → 답변 반환
+- [x] `GET /api/briefing/today` — 오늘 예상 잔액 / 이번 주 정산 / 임박 세금·고정비 / 공실 위험 (`lib/briefing.ts`, 키 불필요)
+- [x] 프론트 `AiAssistant.tsx`의 `getAnswer()` 프리셋 함수를 실제 API 호출(`askAi`)로 교체
+- [x] Dashboard에 오늘의 브리핑 카드 연결
 
 ## Phase 6 — 통합 마무리
 
