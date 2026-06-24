@@ -14,7 +14,6 @@ import { AlertTriangle, CalendarClock, Sparkles, TrendingUp, Wallet } from 'luci
 import { Card, CardTitle, ErrorBanner, PageHeader, PageSkeleton, Pill } from '../components/ui'
 import { fmtMan } from '../lib/utils'
 import { useAuth } from '../contexts/AuthContext'
-import { DEMO_BRIEFING, DEMO_DASHBOARD, DEMO_HEALTH } from '../data/demoData'
 import {
   getBriefing,
   getDashboardSummary,
@@ -60,7 +59,7 @@ function StatCard({
 }
 
 export default function Dashboard() {
-  const { mode } = useAuth()
+  const { mode, demo } = useAuth()
   const [summary, setSummary] = useState<DashboardSummary | null>(null)
   const [healthScore, setHealthScore] = useState<HealthScore | null>(null)
   const [briefing, setBriefing] = useState<Briefing | null>(null)
@@ -69,9 +68,9 @@ export default function Dashboard() {
 
   useEffect(() => {
     if (mode === 'demo') {
-      setSummary(DEMO_DASHBOARD)
-      setHealthScore(DEMO_HEALTH)
-      setBriefing(DEMO_BRIEFING)
+      setSummary(demo.dashboardSummary)
+      setHealthScore(demo.healthScore)
+      setBriefing(demo.briefing)
       return
     }
     setSummary(null)
@@ -83,7 +82,7 @@ export default function Dashboard() {
       })
       .catch((e) => setError(e.message))
     getBriefing().then(setBriefing).catch(() => setBriefing(null))
-  }, [mode, retryKey])
+  }, [mode, demo, retryKey])
 
   if (error) {
     return <ErrorBanner message={error} onRetry={() => setRetryKey((k) => k + 1)} />

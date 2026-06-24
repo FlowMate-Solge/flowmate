@@ -7,7 +7,6 @@ import { ArrowRight } from 'lucide-react'
 import { Card, CardTitle, Pill } from '../components/ui'
 import { fmtMan, fmtWon } from '../lib/utils'
 import { useAuth } from '../contexts/AuthContext'
-import { DEMO_DASHBOARD, DEMO_PLATFORM_BREAKDOWN, DEMO_PLATFORMS } from '../data/demoData'
 import {
   getDashboardSummary, getPlatformBreakdown, getPlatforms,
   type DashboardSummary, type PlatformBreakdown, type PlatformSummary,
@@ -26,7 +25,7 @@ const toManwon = (won: number) => Math.round(won / 10_000)
 const monthLabel = (monthKey: string) => `${Number(monthKey.slice(5))}월`
 
 export default function Sales() {
-  const { mode } = useAuth()
+  const { mode, demo } = useAuth()
   const [summary, setSummary] = useState<DashboardSummary | null>(null)
   const [platforms, setPlatforms] = useState<PlatformSummary[] | null>(null)
   const [selIndex, setSelIndex] = useState<number | null>(null)
@@ -35,16 +34,16 @@ export default function Sales() {
 
   useEffect(() => {
     if (mode === 'demo') {
-      setSummary(DEMO_DASHBOARD)
-      setPlatforms(DEMO_PLATFORMS)
-      setSelIndex(DEMO_DASHBOARD.monthlyTrend.length - 1)
-      setBreakdown(DEMO_PLATFORM_BREAKDOWN)
+      setSummary(demo.dashboardSummary)
+      setPlatforms(demo.platforms)
+      setSelIndex(demo.dashboardSummary.monthlyTrend.length - 1)
+      setBreakdown(demo.platformBreakdown)
       return
     }
     Promise.all([getDashboardSummary(), getPlatforms()])
       .then(([s, p]) => { setSummary(s); setPlatforms(p); setSelIndex(s.monthlyTrend.length - 1) })
       .catch((e) => setError(e.message))
-  }, [mode])
+  }, [mode, demo])
 
   const chartData = summary
     ? summary.monthlyTrend.map((m) => ({ month: m.month, label: monthLabel(m.month), gross: toManwon(m.gross), net: toManwon(m.net) }))

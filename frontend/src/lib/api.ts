@@ -280,6 +280,13 @@ export function addFixedCost(data: { item: string; dayOfMonth: number; amount: n
   })
 }
 
+export function addSale(data: { platformKey: string; date: string; grossAmount: number; bookings?: number }) {
+  return request<{ id: string }>('/api/sales', {
+    method: 'POST',
+    body: JSON.stringify(data),
+  })
+}
+
 export async function uploadSalesCsv(file: File) {
   const form = new FormData()
   form.append('file', file)

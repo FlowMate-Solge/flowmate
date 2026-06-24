@@ -14,7 +14,7 @@ import { AlertTriangle, Calculator, PiggyBank } from 'lucide-react'
 import { Card, CardSkeleton, CardTitle, ErrorBanner, PageHeader, PageSkeleton, Pill } from '../components/ui'
 import { fmtMan } from '../lib/utils'
 import { useAuth } from '../contexts/AuthContext'
-import { DEMO_FORECAST, DEMO_ROI_DEFAULTS, DEMO_TAX } from '../data/demoData'
+import { calculateRoiLocal } from '../lib/demoEngine'
 import {
   calculateRoi,
   getForecast,
@@ -51,8 +51,7 @@ function RoiCalculator() {
 
   useEffect(() => {
     if (mode === 'demo') {
-      const d = DEMO_ROI_DEFAULTS
-      setInput({ investment: toManwon(d.investment), monthlyFixed: toManwon(d.monthlyFixed), avgMonthlyNet: toManwon(d.avgMonthlyNet) })
+      setInput({ investment: 5000, monthlyFixed: 415, avgMonthlyNet: 695 })
       return
     }
     getRoiDefaults()
@@ -64,17 +63,20 @@ function RoiCalculator() {
       .catch(() => setInput({ investment: 0, monthlyFixed: 0, avgMonthlyNet: 0 }))
   }, [mode])
 
-  // 입력(만원) → 원으로 환산해 백엔드 계산 호출
+  // 입력(만원) → 원으로 환산해 계산 (데모: 클라이언트 계산 / 실제: 백엔드 호출)
   useEffect(() => {
     if (!input) return
-    calculateRoi({
-      investment: input.investment * 10_000,
-      monthlyFixed: input.monthlyFixed * 10_000,
-      avgMonthlyNet: input.avgMonthlyNet * 10_000,
-    })
+    const investment = input.investment * 10_000
+    const monthlyFixed = input.monthlyFixed * 10_000
+    const avgMonthlyNet = input.avgMonthlyNet * 10_000
+    if (mode === 'demo') {
+      setResult(calculateRoiLocal(investment, monthlyFixed, avgMonthlyNet))
+      return
+    }
+    calculateRoi({ investment, monthlyFixed, avgMonthlyNet })
       .then(setResult)
       .catch(() => setResult(null))
-  }, [input])
+  }, [input, mode])
 
   if (!input) return <CardSkeleton />
 
@@ -132,15 +134,15 @@ function RoiCalculator() {
 }
 
 function TaxReserveCard() {
-  const { mode } = useAuth()
+  const { mode, demo } = useAuth()
   const [tax, setTax] = useState<TaxReserve | null>(null)
   const [editing, setEditing] = useState<number | null>(null)
   const [saving, setSaving] = useState(false)
 
   useEffect(() => {
-    if (mode === 'demo') { setTax(DEMO_TAX); return }
+    if (mode === 'demo') { setTax(demo.taxReserve); return }
     getTaxReserve().then(setTax).catch(() => setTax(null))
-  }, [mode])
+  }, [mode, demo])
 
   if (!tax) return <CardSkeleton />
 
@@ -151,6 +153,11 @@ function TaxReserveCard() {
     if (editing == null) return
     setSaving(true)
     try {
+      if (mode === 'demo') {
+        demo.updateTaxBalance(editing * 10_000)
+        setEditing(null)
+        return
+      }
       const updated = await updateTaxReserve({ currentBalance: editing * 10_000 })
       setTax(updated)
       setEditing(null)
@@ -235,17 +242,17 @@ function TaxReserveCard() {
 }
 
 export default function ForecastPage() {
-  const { mode } = useAuth()
+  const { mode, demo } = useAuth()
   const [forecast, setForecast] = useState<Forecast | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [retryKey, setRetryKey] = useState(0)
 
   useEffect(() => {
-    if (mode === 'demo') { setForecast(DEMO_FORECAST); return }
+    if (mode === 'demo') { setForecast(demo.forecast); return }
     setForecast(null)
     setError(null)
     getForecast().then(setForecast).catch((e) => setError(e.message))
-  }, [mode, retryKey])
+  }, [mode, demo, retryKey])
 
   if (error) {
     return <ErrorBanner message={error} onRetry={() => setRetryKey((k) => k + 1)} />

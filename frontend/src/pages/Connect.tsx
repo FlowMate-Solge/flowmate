@@ -4,18 +4,21 @@ import {
   CalendarCheck,
   Check,
   CreditCard,
+  Image as ImageIcon,
   Landmark,
   Pencil,
   Plus,
+  ReceiptText,
   RefreshCw,
   Upload,
   Zap,
 } from 'lucide-react'
 import { Card, CardTitle, PageHeader, Pill } from '../components/ui'
 import { useAuth } from '../contexts/AuthContext'
-import { DEMO_PLATFORMS } from '../data/demoData'
+import { parseSalesCsv } from '../lib/demoEngine'
 import {
   addFixedCost,
+  addSale,
   connectPlatform,
   getFixedCosts,
   getPlatforms,
@@ -99,24 +102,28 @@ function SourceRow({
 }
 
 export default function Connect() {
-  const { mode } = useAuth()
+  const { mode, demo } = useAuth()
   const [platformSources, setPlatformSources] = useState<Source[]>([])
   const [loadError, setLoadError] = useState<string | null>(null)
 
   useEffect(() => {
     if (mode === 'demo') {
-      setPlatformSources(DEMO_PLATFORMS.map(toSource))
+      setPlatformSources(demo.platforms.map(toSource))
       return
     }
     getPlatforms()
       .then((platforms) => setPlatformSources(platforms.map(toSource)))
       .catch((e) => setLoadError(e.message))
-  }, [mode])
+  }, [mode, demo])
 
   const sources = [...accountSources, ...platformSources]
   const connectedCount = sources.filter((s) => s.connected).length
 
   async function toggle(id: string) {
+    if (mode === 'demo') {
+      demo.connectPlatform(id)
+      return
+    }
     setPlatformSources((prev) =>
       prev.map((s) => (s.id === id ? { ...s, connected: true } : s)),
     )
@@ -134,13 +141,22 @@ export default function Connect() {
   const [fixedCosts, setFixedCosts] = useState<FixedCost[]>([])
 
   useEffect(() => {
+    if (mode === 'demo') {
+      setFixedCosts(demo.store.fixedCosts.map((fc) => ({ ...fc, createdAt: '' })))
+      return
+    }
     getFixedCosts()
       .then(setFixedCosts)
       .catch((e) => setLoadError(e.message))
-  }, [])
+  }, [mode, demo])
 
   async function handleAddFixedCost() {
     if (!costItem.trim() || !costAmount) return
+    if (mode === 'demo') {
+      demo.addFixedCost(costItem.trim(), Number(costDay), Number(costAmount))
+      setCostItem('')
+      return
+    }
     try {
       const created = await addFixedCost({
         item: costItem.trim(),
@@ -160,6 +176,21 @@ export default function Connect() {
 
   async function handleFileSelected(file: File) {
     setUploadStatus('업로드 중...')
+    if (mode === 'demo') {
+      try {
+        const text = await file.text()
+        const rows = parseSalesCsv(text)
+        const result = demo.addSales(rows)
+        setUploadStatus(
+          result.errors.length > 0
+            ? `${result.created}건 업로드 완료, ${result.errors.length}건 오류 (대시보드·예측에 반영됨)`
+            : `${result.created}건 업로드 완료 — 대시보드·예측에 반영됨`,
+        )
+      } catch {
+        setUploadStatus('CSV 형식을 확인해주세요 (platformKey,date,grossAmount,bookings)')
+      }
+      return
+    }
     try {
       const result = await uploadSalesCsv(file)
       setUploadStatus(
@@ -170,6 +201,42 @@ export default function Connect() {
     } catch (e) {
       setUploadStatus(e instanceof Error ? e.message : '업로드 실패')
     }
+  }
+
+  // 정산 내역 수기 입력 (플랫폼이 연동 안 될 때 직접 한 건씩 입력)
+  const [saleAmount, setSaleAmount] = useState('')
+  const [saleBookings, setSaleBookings] = useState('1')
+  const [saleStatus, setSaleStatus] = useState<string | null>(null)
+  const firstPlatformKey = platformSources[0]?.id ?? ''
+
+  async function handleAddSale() {
+    if (!firstPlatformKey || !saleAmount) return
+    const platformKey = firstPlatformKey
+    const grossAmount = Number(saleAmount)
+    const bookings = Number(saleBookings) || 1
+    if (mode === 'demo') {
+      demo.addSales([{ platformKey, grossAmount, bookings }])
+      setSaleStatus('등록 완료 — 대시보드·예측에 반영됨')
+      setSaleAmount('')
+      return
+    }
+    try {
+      await addSale({ platformKey, date: new Date().toISOString().slice(0, 10), grossAmount, bookings })
+      setSaleStatus('등록 완료')
+      setSaleAmount('')
+    } catch (e) {
+      setSaleStatus(e instanceof Error ? e.message : '등록 실패')
+    }
+  }
+
+  // 정산 캡처 이미지 업로드 — 미리보기만 제공 (OCR 자동 인식은 v2 범위)
+  const imageInputRef = useRef<HTMLInputElement>(null)
+  const [imagePreview, setImagePreview] = useState<string | null>(null)
+  const [imageStatus, setImageStatus] = useState<string | null>(null)
+
+  function handleImageSelected(file: File) {
+    setImagePreview(URL.createObjectURL(file))
+    setImageStatus('이미지 업로드됨 — 자동 인식(OCR)은 다음 버전에서 지원 예정입니다. 아래에서 직접 입력해주세요.')
   }
 
   return (
@@ -323,9 +390,10 @@ export default function Connect() {
           직접 업로드
         </CardTitle>
         <p className="mb-3 text-xs text-ink-400">
-          연동이 안 되는 플랫폼은 정산 내역서(CSV)를 올리면 자동으로 인식합니다.
-          컬럼: platformKey, date, grossAmount, bookings
+          연동이 안 되는 플랫폼은 CSV·정산 캡처를 올리거나 직접 한 건씩 입력해도 동일하게 반영됩니다.
         </p>
+
+        {/* CSV 업로드 */}
         <input
           ref={fileInputRef}
           type="file"
@@ -339,15 +407,70 @@ export default function Connect() {
         />
         <button
           onClick={() => fileInputRef.current?.click()}
-          className="flex w-full flex-col items-center justify-center gap-2 rounded-2xl border-2 border-dashed border-slate-200 py-8 text-ink-400 transition hover:border-brand-300 hover:bg-brand-50/40"
+          className="flex w-full flex-col items-center justify-center gap-2 rounded-2xl border-2 border-dashed border-slate-200 py-7 text-ink-400 transition hover:border-brand-300 hover:bg-brand-50/40"
         >
-          <Upload size={22} />
+          <Upload size={20} />
           <span className="text-sm font-medium">클릭해서 CSV 업로드</span>
-          <span className="text-[11px]">스페이스클라우드·네이버·아워플레이스 정산서 지원</span>
+          <span className="text-[11px]">컬럼: platformKey, date, grossAmount, bookings</span>
         </button>
         {uploadStatus && (
           <p className="mt-2 text-center text-xs text-ink-500">{uploadStatus}</p>
         )}
+
+        {/* 이미지(정산 캡처) 업로드 */}
+        <input
+          ref={imageInputRef}
+          type="file"
+          accept="image/*"
+          className="hidden"
+          onChange={(e) => {
+            const file = e.target.files?.[0]
+            if (file) handleImageSelected(file)
+            e.target.value = ''
+          }}
+        />
+        <button
+          onClick={() => imageInputRef.current?.click()}
+          className="mt-3 flex w-full items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white py-3 text-sm font-medium text-ink-500 transition hover:bg-slate-50"
+        >
+          <ImageIcon size={16} /> 정산 내역 캡처(이미지) 업로드
+        </button>
+        {imagePreview && (
+          <div className="mt-2 flex items-center gap-3 rounded-xl bg-slate-50 px-3 py-2">
+            <img src={imagePreview} alt="정산 캡처 미리보기" className="h-12 w-12 rounded-lg object-cover" />
+            <p className="text-xs leading-relaxed text-ink-500">{imageStatus}</p>
+          </div>
+        )}
+
+        {/* 정산 내역 수기 입력 */}
+        <div className="mt-4 border-t border-slate-100 pt-4">
+          <div className="mb-2 flex items-center gap-1.5 text-xs font-medium text-ink-500">
+            <ReceiptText size={14} /> 정산 내역 한 건 수기 입력 ({platformSources[0]?.name ?? '플랫폼'})
+          </div>
+          <div className="flex gap-2">
+            <input
+              type="number"
+              value={saleAmount}
+              onChange={(e) => setSaleAmount(e.target.value)}
+              placeholder="매출 금액(원)"
+              className="w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm outline-none focus:border-brand-400"
+            />
+            <input
+              type="number"
+              value={saleBookings}
+              onChange={(e) => setSaleBookings(e.target.value)}
+              placeholder="예약 건수"
+              className="w-24 rounded-xl border border-slate-200 px-3 py-2.5 text-sm outline-none focus:border-brand-400"
+            />
+            <button
+              onClick={handleAddSale}
+              className="shrink-0 rounded-xl bg-brand-600 px-4 text-sm font-semibold text-white transition hover:bg-brand-700"
+            >
+              추가
+            </button>
+          </div>
+          {saleStatus && <p className="mt-2 text-xs text-ink-500">{saleStatus}</p>}
+        </div>
       </Card>
     </div>
   )
