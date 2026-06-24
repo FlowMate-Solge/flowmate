@@ -21,6 +21,7 @@ const fmtWon = (won: number) => `₩${won.toLocaleString('ko-KR')}`
 export default function PriceCalculator() {
   const { mode, demo } = useAuth()
   const [price, setPrice] = useState<PriceBenchmark | null>(null)
+  const [hoverIdx, setHoverIdx] = useState<number | null>(null)
 
   useEffect(() => {
     if (mode === 'demo') {
@@ -119,11 +120,33 @@ export default function PriceCalculator() {
               interval={0}
             />
             <YAxis tickLine={false} axisLine={false} fontSize={11} tickFormatter={(v) => `${v / 1000}천`} />
-            <Tooltip formatter={(v: number) => fmtWon(v)} contentStyle={{ borderRadius: 12, border: '1px solid #eef0f4' }} />
-            <Bar dataKey="price" radius={[6, 6, 0, 0]} barSize={28}>
-              {chartData.map((d, i) => (
-                <Cell key={i} fill={d.mine ? '#3366ff' : '#cbd5e1'} />
-              ))}
+            <Tooltip
+              cursor={false}
+              formatter={(v: number) => fmtWon(v)}
+              contentStyle={{ borderRadius: 12, border: '1px solid #eef0f4' }}
+            />
+            <Bar
+              dataKey="price"
+              radius={[6, 6, 0, 0]}
+              barSize={28}
+              onMouseEnter={(_, idx) => setHoverIdx(idx)}
+              onMouseLeave={() => setHoverIdx(null)}
+            >
+              {chartData.map((d, i) => {
+                const active = hoverIdx === i
+                return (
+                  <Cell
+                    key={i}
+                    fill={d.mine ? '#3366ff' : active ? '#1f47f5' : '#cbd5e1'}
+                    opacity={hoverIdx === null || active ? 1 : 0.45}
+                    style={{
+                      transition: 'fill 0.25s ease, opacity 0.25s ease, transform 0.25s ease',
+                      transformOrigin: 'bottom',
+                      transform: active ? 'scaleY(1.04)' : 'scaleY(1)',
+                    }}
+                  />
+                )
+              })}
             </Bar>
           </BarChart>
         </ResponsiveContainer>
