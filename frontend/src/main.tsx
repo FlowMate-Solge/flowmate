@@ -10,6 +10,7 @@ import Dashboard from './pages/Dashboard'
 import Sales from './pages/Sales'
 import Forecast from './pages/Forecast'
 import Actions from './pages/Actions'
+import PriceCalculator from './pages/PriceCalculator'
 import Connect from './pages/Connect'
 
 const router = createBrowserRouter([
@@ -24,6 +25,7 @@ const router = createBrowserRouter([
       { path: 'sales', element: <Sales /> },
       { path: 'forecast', element: <Forecast /> },
       { path: 'actions', element: <Actions /> },
+      { path: 'price', element: <PriceCalculator /> },
       { path: 'connect', element: <Connect /> },
     ],
   },

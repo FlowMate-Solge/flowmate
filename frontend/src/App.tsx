@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { NavLink, Outlet, useNavigate } from 'react-router-dom'
-import { LayoutDashboard, LineChart, MessageSquareText, Plug, Sun, Building2 } from 'lucide-react'
+import { Calculator, LayoutDashboard, LineChart, MessageSquareText, Plug, Sun, Building2 } from 'lucide-react'
 import AiAssistant, { AiAssistantMobile } from './components/AiAssistant'
 import { useAuth } from './contexts/AuthContext'
 import { DEMO_BUSINESS } from './data/demoData'
@@ -10,6 +10,7 @@ const nav = [
   { to: '/app/sales',     label: '매출 통합',   short: '매출',  icon: LayoutDashboard },
   { to: '/app/forecast',  label: '현금흐름 예측', short: '예측', icon: LineChart },
   { to: '/app/actions',   label: '행동 추천',   short: '추천',  icon: MessageSquareText },
+  { to: '/app/price',     label: '시세 계산기', short: '시세',  icon: Calculator },
   { to: '/app/connect',   label: '데이터 연결', short: '연결',  icon: Plug },
 ]
 
