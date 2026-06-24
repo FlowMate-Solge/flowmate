@@ -6,11 +6,15 @@ import {
   CreditCard,
   Image as ImageIcon,
   Landmark,
+  Loader2,
+  Lock,
   Pencil,
   Plus,
   ReceiptText,
   RefreshCw,
+  ShieldCheck,
   Upload,
+  X,
   Zap,
 } from 'lucide-react'
 import { Card, CardTitle, PageHeader, Pill } from '../components/ui'
@@ -65,10 +69,10 @@ function toSource(p: PlatformSummary): Source {
 
 function SourceRow({
   s,
-  onToggle,
+  onConnectClick,
 }: {
   s: Source
-  onToggle: (id: string) => void
+  onConnectClick: (s: Source) => void
 }) {
   return (
     <div className="flex items-center justify-between rounded-xl border border-slate-100 px-4 py-3">
@@ -91,12 +95,108 @@ function SourceRow({
         </Pill>
       ) : (
         <button
-          onClick={() => onToggle(s.id)}
+          onClick={() => onConnectClick(s)}
           className="rounded-lg bg-brand-600 px-3 py-1.5 text-xs font-semibold text-white transition hover:bg-brand-700"
         >
           연결하기
         </button>
       )}
+    </div>
+  )
+}
+
+type ConnectStep = 'login' | 'consent' | 'syncing'
+
+// 연결하기 클릭 시 실제 플랫폼으로 이동하지 않고, 로그인→권한동의→동기화 절차를
+// 앱 안에서 흉내내는 모달. 마지막 단계에서 onDone()이 실제 연결 처리를 한다.
+function ConnectFlowModal({
+  source,
+  onClose,
+  onDone,
+}: {
+  source: Source
+  onClose: () => void
+  onDone: () => void
+}) {
+  const [step, setStep] = useState<ConnectStep>('login')
+
+  useEffect(() => {
+    if (step !== 'syncing') return
+    const t = setTimeout(onDone, 1300)
+    return () => clearTimeout(t)
+  }, [step, onDone])
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4">
+      <div className="w-full max-w-sm rounded-2xl bg-white p-6 shadow-card">
+        <div className="mb-5 flex items-center justify-between">
+          <div className="flex items-center gap-2.5">
+            <div className="grid h-9 w-9 place-items-center rounded-xl bg-brand-50 text-brand-600">
+              <source.icon size={17} />
+            </div>
+            <div className="text-sm font-bold">{source.name}</div>
+          </div>
+          {step !== 'syncing' && (
+            <button onClick={onClose} className="text-ink-400 hover:text-ink-700">
+              <X size={18} />
+            </button>
+          )}
+        </div>
+
+        {step === 'login' && (
+          <>
+            <h3 className="text-base font-bold">{source.name} 계정으로 로그인</h3>
+            <p className="mt-1 text-xs text-ink-400">FlowMate가 사장님 계정에 안전하게 연결합니다.</p>
+            <div className="mt-4 space-y-2.5">
+              <input
+                placeholder="아이디"
+                className="w-full rounded-xl border border-slate-200 px-3.5 py-2.5 text-sm outline-none focus:border-brand-400"
+              />
+              <input
+                type="password"
+                placeholder="비밀번호"
+                className="w-full rounded-xl border border-slate-200 px-3.5 py-2.5 text-sm outline-none focus:border-brand-400"
+              />
+            </div>
+            <button
+              onClick={() => setStep('consent')}
+              className="mt-4 w-full rounded-xl bg-brand-600 py-3 text-sm font-bold text-white transition hover:bg-brand-700"
+            >
+              로그인
+            </button>
+          </>
+        )}
+
+        {step === 'consent' && (
+          <>
+            <h3 className="text-base font-bold">FlowMate에 다음 권한을 허용할까요?</h3>
+            <div className="mt-4 space-y-2.5">
+              {['예약·매출 내역 조회', '정산·수수료 내역 조회', '예약률·공실 현황 조회'].map((perm) => (
+                <div key={perm} className="flex items-center gap-2 rounded-xl bg-slate-50 px-3.5 py-2.5 text-sm">
+                  <ShieldCheck size={15} className="shrink-0 text-brand-600" />
+                  {perm}
+                </div>
+              ))}
+            </div>
+            <button
+              onClick={() => setStep('syncing')}
+              className="mt-4 w-full rounded-xl bg-brand-600 py-3 text-sm font-bold text-white transition hover:bg-brand-700"
+            >
+              동의하고 연결하기
+            </button>
+          </>
+        )}
+
+        {step === 'syncing' && (
+          <div className="flex flex-col items-center py-4 text-center">
+            <Loader2 size={28} className="animate-spin text-brand-600" />
+            <p className="mt-4 text-sm font-medium text-ink-700">최근 정산·예약 내역을 가져오는 중...</p>
+            <p className="mt-1 flex items-center gap-1 text-xs text-ink-400">
+              <Lock size={11} /> 안전하게 암호화되어 전송됩니다
+            </p>
+          </div>
+        )}
+      </div>
     </div>
   )
 }
@@ -118,6 +218,9 @@ export default function Connect() {
 
   const sources = [...accountSources, ...platformSources]
   const connectedCount = sources.filter((s) => s.connected).length
+
+  // 연결하기 클릭 시 모달로 로그인→권한동의→동기화 절차를 거친 뒤 실제 연결
+  const [flowSource, setFlowSource] = useState<Source | null>(null)
 
   async function toggle(id: string) {
     if (mode === 'demo') {
@@ -282,7 +385,7 @@ export default function Connect() {
           </p>
           <div className="space-y-2">
             {accountSources.map((s) => (
-              <SourceRow key={s.id} s={s} onToggle={toggle} />
+              <SourceRow key={s.id} s={s} onConnectClick={setFlowSource} />
             ))}
           </div>
         </Card>
@@ -297,7 +400,7 @@ export default function Connect() {
           </p>
           <div className="space-y-2">
             {platformSources.map((s) => (
-              <SourceRow key={s.id} s={s} onToggle={toggle} />
+              <SourceRow key={s.id} s={s} onConnectClick={setFlowSource} />
             ))}
           </div>
         </Card>
@@ -472,6 +575,17 @@ export default function Connect() {
           {saleStatus && <p className="mt-2 text-xs text-ink-500">{saleStatus}</p>}
         </div>
       </Card>
+
+      {flowSource && (
+        <ConnectFlowModal
+          source={flowSource}
+          onClose={() => setFlowSource(null)}
+          onDone={() => {
+            toggle(flowSource.id)
+            setFlowSource(null)
+          }}
+        />
+      )}
     </div>
   )
 }
