@@ -10,7 +10,7 @@ import {
   XAxis,
   YAxis,
 } from 'recharts'
-import { AlertTriangle, Calculator, PiggyBank } from 'lucide-react'
+import { AlertTriangle, ArrowRight, Calculator, Lightbulb, PiggyBank, TrendingDown, TrendingUp } from 'lucide-react'
 import { Card, CardSkeleton, CardTitle, ErrorBanner, PageHeader, PageSkeleton, Pill } from '../components/ui'
 import { fmtMan } from '../lib/utils'
 import { useAuth } from '../contexts/AuthContext'
@@ -277,20 +277,28 @@ export default function ForecastPage() {
         badge="AI 예측"
       />
 
-      {/* 위험 경고 배너 */}
+      {/* 위험 경고 배너 — 브리핑 모달과 동일한 형식 */}
       {risk && (
-        <div className="mb-4 flex items-start gap-3 rounded-2xl border border-red-100 bg-red-50 p-4">
-          <div className="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-danger text-white">
-            <AlertTriangle size={18} />
-          </div>
-          <div>
-            <div className="font-bold text-danger">
-              {risk.startLabel}~{risk.endLabel} 자금 부족 위험
+        <div className="mb-4 break-keep rounded-2xl border border-red-100 bg-red-50 p-3.5">
+          {/* 경고 */}
+          <div className="flex items-start gap-2.5">
+            <div className="grid h-8 w-8 shrink-0 place-items-center rounded-xl bg-danger text-white">
+              <AlertTriangle size={16} />
             </div>
-            <p className="mt-0.5 text-sm text-ink-700">{risk.reason}</p>
-            <p className="mt-1 text-sm text-ink-700">
-              💡 <b>대응:</b> {risk.suggestion}
-            </p>
+            <div>
+              <div className="font-bold text-danger">
+                {risk.startLabel}~{risk.endLabel} 자금 부족 위험
+              </div>
+              <p className="mt-0.5 text-sm text-ink-700">{risk.reason}</p>
+            </div>
+          </div>
+          <hr className="my-2.5 border-red-200/70" />
+          {/* 대응 */}
+          <div className="flex items-start gap-2.5">
+            <div className="grid h-8 w-8 shrink-0 place-items-center rounded-xl bg-amber-100 text-amber-600">
+              <Lightbulb size={16} />
+            </div>
+            <p className="pt-1 text-sm text-ink-700">{risk.suggestion}</p>
           </div>
         </div>
       )}
@@ -311,8 +319,8 @@ export default function ForecastPage() {
           일별 예상 잔액 ({forecast.days[0]?.label} ~{' '}
           {forecast.days[forecast.days.length - 1]?.label})
         </CardTitle>
-        <ResponsiveContainer width="100%" height={300}>
-          <AreaChart data={chartData} margin={{ left: -8, right: 8 }}>
+        <ResponsiveContainer width="100%" height={240}>
+          <AreaChart data={chartData} margin={{ left: 0, right: 12, top: 8 }}>
             <defs>
               <linearGradient id="bal" x1="0" y1="0" x2="0" y2="1">
                 <stop offset="0%" stopColor="#3366ff" stopOpacity={0.25} />
@@ -327,8 +335,9 @@ export default function ForecastPage() {
               fontSize={11}
               interval="preserveStartEnd"
               minTickGap={20}
+              padding={{ left: 4, right: 4 }}
             />
-            <YAxis tickLine={false} axisLine={false} fontSize={11} />
+            <YAxis tickLine={false} axisLine={false} fontSize={11} width={40} />
             <Tooltip content={<ForecastTooltip />} />
             <ReferenceLine
               y={safetyMan}
@@ -368,16 +377,38 @@ export default function ForecastPage() {
         </div>
       </Card>
 
-      {/* 성수기/비수기 신호 */}
-      {seasonal.peakMessage && (
-        <div className="mt-4 flex items-start gap-3 rounded-2xl border border-brand-100 bg-brand-50 p-4 text-sm text-brand-800">
-          <span className="text-lg">{seasonal.trend === 'up' ? '📈' : seasonal.trend === 'down' ? '📉' : '➡️'}</span>
-          <div>
-            <p>{seasonal.peakMessage}</p>
-            <p className="mt-1 text-ink-600">{seasonal.prepMessage}</p>
+      {/* 성수기/비수기 신호 — 브리핑 모달과 동일한 형식 */}
+      {seasonal.peakMessage && (() => {
+        const cfg =
+          seasonal.trend === 'up'
+            ? { Icon: TrendingUp, title: '성수기 진입 신호', wrap: 'border-brand-100 bg-brand-50', icon: 'bg-brand-600', titleColor: 'text-brand-700', divider: 'border-brand-200/70' }
+            : seasonal.trend === 'down'
+              ? { Icon: TrendingDown, title: '비수기 진입 주의', wrap: 'border-amber-100 bg-amber-50', icon: 'bg-amber-500', titleColor: 'text-amber-700', divider: 'border-amber-200/70' }
+              : { Icon: ArrowRight, title: '매출 안정세', wrap: 'border-slate-200 bg-slate-50', icon: 'bg-slate-400', titleColor: 'text-ink-700', divider: 'border-slate-200' }
+        const { Icon } = cfg
+        return (
+          <div className={`mt-4 break-keep rounded-2xl border p-3.5 ${cfg.wrap}`}>
+            {/* 신호 */}
+            <div className="flex items-start gap-2.5">
+              <div className={`grid h-8 w-8 shrink-0 place-items-center rounded-xl text-white ${cfg.icon}`}>
+                <Icon size={16} />
+              </div>
+              <div>
+                <div className={`font-bold ${cfg.titleColor}`}>{cfg.title}</div>
+                <p className="mt-0.5 text-sm text-ink-700">{seasonal.peakMessage}</p>
+              </div>
+            </div>
+            <hr className={`my-2.5 ${cfg.divider}`} />
+            {/* 대비 */}
+            <div className="flex items-start gap-2.5">
+              <div className="grid h-8 w-8 shrink-0 place-items-center rounded-xl bg-amber-100 text-amber-600">
+                <Lightbulb size={16} />
+              </div>
+              <p className="pt-1 text-sm text-ink-700">{seasonal.prepMessage}</p>
+            </div>
           </div>
-        </div>
-      )}
+        )
+      })()}
 
       <div className="mt-4 grid grid-cols-1 gap-4 lg:grid-cols-2">
         <RoiCalculator />
