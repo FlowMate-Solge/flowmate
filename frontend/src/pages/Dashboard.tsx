@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import {
   Bar,
   CartesianGrid,
@@ -10,7 +11,7 @@ import {
   XAxis,
   YAxis,
 } from 'recharts'
-import { AlertTriangle, CalendarClock, Sparkles, TrendingUp, Wallet } from 'lucide-react'
+import { AlertTriangle, CalendarClock, ChevronRight, Sparkles, TrendingUp, Wallet, X } from 'lucide-react'
 import { Card, CardTitle, ErrorBanner, PageHeader, PageSkeleton, Pill } from '../components/ui'
 import { fmtMan } from '../lib/utils'
 import { useAuth } from '../contexts/AuthContext'
@@ -60,11 +61,13 @@ function StatCard({
 
 export default function Dashboard() {
   const { mode, demo } = useAuth()
+  const navigate = useNavigate()
   const [summary, setSummary] = useState<DashboardSummary | null>(null)
   const [healthScore, setHealthScore] = useState<HealthScore | null>(null)
   const [briefing, setBriefing] = useState<Briefing | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [retryKey, setRetryKey] = useState(0)
+  const [alertDismissed, setAlertDismissed] = useState(false)
 
   useEffect(() => {
     if (mode === 'demo') {
@@ -199,20 +202,40 @@ export default function Dashboard() {
         </Card>
       </div>
 
-      {/* 자금 부족 알림 */}
-      {briefing?.cashRisk && (
-        <div className="mt-4 flex items-start gap-3 rounded-2xl border border-red-100 bg-red-50 p-4">
-          <div className="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-danger text-white">
-            <AlertTriangle size={18} />
-          </div>
-          <div>
-            <div className="font-bold text-danger">
-              {briefing.cashRisk.period} 자금 부족 구간 — 최저 {fmtMan(toManwon(briefing.cashRisk.lowestBalance))}
+      {/* 자금 부족 알림 — 클릭하면 현금흐름 예측 탭으로 이동하는 팝업 */}
+      {briefing?.cashRisk && !alertDismissed && (
+        <div className="fixed right-4 top-20 z-50 w-[min(22rem,calc(100vw-2rem))] md:right-6">
+          <div
+            role="button"
+            tabIndex={0}
+            onClick={() => navigate('/app/forecast')}
+            onKeyDown={(e) => e.key === 'Enter' && navigate('/app/forecast')}
+            className="relative flex cursor-pointer items-start gap-3 rounded-2xl border border-red-100 bg-red-50 p-4 shadow-card transition hover:shadow-lg"
+          >
+            <button
+              onClick={(e) => {
+                e.stopPropagation()
+                setAlertDismissed(true)
+              }}
+              className="absolute right-2 top-2 grid h-6 w-6 place-items-center rounded-full text-ink-400 hover:bg-white/60 hover:text-ink-700"
+            >
+              <X size={14} />
+            </button>
+            <div className="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-danger text-white">
+              <AlertTriangle size={18} />
             </div>
-            <p className="mt-0.5 text-sm text-ink-700">{briefing.cashRisk.reason}</p>
-            <p className="mt-1 text-sm text-ink-700">
-              💡 <b>대응:</b> {briefing.cashRisk.suggestion}
-            </p>
+            <div className="pr-4">
+              <div className="font-bold text-danger">
+                {briefing.cashRisk.period} 자금 부족 구간 — 최저 {fmtMan(toManwon(briefing.cashRisk.lowestBalance))}
+              </div>
+              <p className="mt-0.5 text-sm text-ink-700">{briefing.cashRisk.reason}</p>
+              <p className="mt-1 text-sm text-ink-700">
+                💡 <b>대응:</b> {briefing.cashRisk.suggestion}
+              </p>
+              <div className="mt-2 flex items-center gap-1 text-xs font-semibold text-brand-600">
+                현금흐름 예측에서 자세히 보기 <ChevronRight size={13} />
+              </div>
+            </div>
           </div>
         </div>
       )}
