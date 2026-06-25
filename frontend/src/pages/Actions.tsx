@@ -63,14 +63,27 @@ export default function Actions() {
       vacancyNote = ' 공실률이 안정적인 편이라 평균 시세를 그대로 제안합니다.'
     }
   }
-  const insight = `${SURVEYED_AREA} 인근 ${NEARBY_VENUES.length}곳 평균은 ${fmtWonRaw(avg)}입니다 (${SURVEYED_AT} 조사 기준).${vacancyNote}`
-
   const b = { low, high, golden, current }
   const pos = (won: number) => ((won - b.low) / (b.high - b.low)) * 100
   const goldenLeft = pos(b.golden - 1000)
   const goldenWidth = pos(b.golden + 1000) - goldenLeft
   const headroom = b.golden - b.current
-  const maxBar = Math.max(high, current)
+
+  // 주변 매장을 가격대별로 묶어 분포(%)로 표시
+  const priceBandDefs = [
+    { band: '~1만', min: 0, max: 9_999 },
+    { band: '1~2만', min: 10_000, max: 19_999 },
+    { band: '2~3만', min: 20_000, max: 29_999 },
+    { band: '3~4만', min: 30_000, max: 39_999 },
+    { band: '4만~', min: 40_000, max: Infinity },
+  ]
+  const priceBands = priceBandDefs.map((d) => {
+    const count = NEARBY_VENUES.filter((v) => v.pricePerHour >= d.min && v.pricePerHour <= d.max).length
+    return { band: d.band, share: Math.round((count / NEARBY_VENUES.length) * 100) }
+  })
+  const maxShare = Math.max(...priceBands.map((x) => x.share))
+  const topBand = priceBands.find((x) => x.share === maxShare)!
+  const insight = `${SURVEYED_AREA} 유사 파티룸의 ${topBand.share}%가 시간당 ${topBand.band}원 구간에 속합니다 (${SURVEYED_AT} 조사 기준).${vacancyNote}`
 
   return (
     <div>
@@ -116,18 +129,18 @@ export default function Actions() {
           </div>
         </div>
 
-        {/* 주변 매장 시세 */}
+        {/* 주변 매장 가격대 분포 */}
         <div className="mt-5 border-t border-slate-100 pt-4">
-          <div className="mb-2 text-xs font-medium text-ink-500">주변 매장 시세</div>
+          <div className="mb-2 text-xs font-medium text-ink-500">주변 매장 가격대 분포</div>
           <div className="space-y-1.5">
-            {NEARBY_VENUES.map((v) => (
-              <div key={v.name} className="flex items-center gap-2 text-xs">
-                <span className="w-28 shrink-0 truncate text-ink-400">{v.name}</span>
+            {priceBands.map((band) => (
+              <div key={band.band} className="flex items-center gap-2 text-xs">
+                <span className="w-12 shrink-0 text-ink-400">{band.band}</span>
                 <div className="h-2 flex-1 rounded-full bg-slate-100">
-                  <div className={`h-2 rounded-full ${v.pricePerHour === high ? 'bg-positive' : 'bg-brand-300'}`}
-                    style={{ width: `${(v.pricePerHour / maxBar) * 100}%` }} />
+                  <div className={`h-2 rounded-full ${band.share === maxShare ? 'bg-positive' : 'bg-brand-300'}`}
+                    style={{ width: `${band.share}%` }} />
                 </div>
-                <span className="w-16 shrink-0 text-right font-medium">{fmtWonRaw(v.pricePerHour)}</span>
+                <span className="w-8 shrink-0 text-right font-medium">{band.share}%</span>
               </div>
             ))}
           </div>
