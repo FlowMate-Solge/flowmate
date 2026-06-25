@@ -27,8 +27,18 @@ export interface PlatformSummary {
   perBooking: number
 }
 
+export interface DailyRecord {
+  date: string // YYYY-MM-DD
+  gross: number
+  fee: number
+  net: number
+  bookings: number
+}
+
 export interface DashboardSummary {
   totals: { gross: number; fee: number; net: number; bookings: number }
+  today: { gross: number; fee: number; net: number; bookings: number }
+  days: DailyRecord[] // 오늘 포함 최근 일별 기록 (날짜 이동용)
   monthlyTrend: { month: string; gross: number; net: number }[]
 }
 
@@ -208,12 +218,20 @@ export function getHealthScore() {
   return request<HealthScore>('/api/health-score')
 }
 
+export interface CalendarEvent {
+  date: string // YYYY-MM-DD
+  label: string
+  amount: number // 원 (kind로 입금/지출 구분)
+  kind: 'income' | 'expense' | 'filing'
+}
+
 export interface Briefing {
   date: string
   expectedBalance: number // 원
   weekSettlement: { platform: string; amount: number; date: string }[]
   upcoming: { label: string; amount: number; date: string; urgent: boolean }[]
   vacancy: string
+  calendar?: CalendarEvent[] // 오늘부터 이어지는 일정(정산·고정비·세금신고)
   cashRisk?: {
     period: string       // "6/25~6/27"
     lowestBalance: number // 원

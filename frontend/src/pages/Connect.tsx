@@ -15,7 +15,6 @@ import {
   ShieldCheck,
   Upload,
   X,
-  Zap,
 } from 'lucide-react'
 import { Card, CardTitle, PageHeader, Pill } from '../components/ui'
 import { useAuth } from '../contexts/AuthContext'
@@ -347,7 +346,6 @@ export default function Connect() {
       <PageHeader
         title="데이터 연결"
         subtitle="한 번 연결하면 매출·정산·지출이 매일 자동으로 들어옵니다. 직접 입력할 필요 없어요."
-        badge="자동 동기화"
       />
 
       {loadError && (
@@ -356,22 +354,9 @@ export default function Connect() {
         </div>
       )}
 
-      {/* 핵심 메시지 배너 — '누가 입력하냐' 반박 */}
-      <div className="mb-4 flex items-start gap-3 rounded-2xl bg-brand-600 p-5 text-white">
-        <div className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-white/15">
-          <Zap size={20} />
-        </div>
-        <div>
-          <div className="font-bold">손으로 입력하는 가계부가 아닙니다</div>
-          <p className="mt-1 text-sm leading-relaxed text-white/85">
-            계좌·카드·예약 플랫폼을 한 번만 연결하면 거래가 자동으로 모입니다.
-            매일 새벽 동기화 후 오늘의 브리핑까지 자동 생성돼요.
-          </p>
-          <div className="mt-3 flex items-center gap-2 text-xs text-white/80">
-            <RefreshCw size={13} /> 마지막 동기화: 오늘 새벽 4:02 · {connectedCount}개
-            소스 연결됨
-          </div>
-        </div>
+      {/* 마지막 동기화 */}
+      <div className="mb-4 flex items-center gap-2 text-xs text-ink-400">
+        <RefreshCw size={13} /> 마지막 동기화: 오늘 새벽 4:02 · {connectedCount}개 소스 연결됨
       </div>
 
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">

@@ -7,6 +7,8 @@
 // ─────────────────────────────────────────────────────────────
 import type {
   Briefing,
+  CalendarEvent,
+  DailyRecord,
   DashboardSummary,
   Forecast,
   ForecastDay,
@@ -117,7 +119,97 @@ export function deriveDashboardSummary(store: DemoStore): DashboardSummary {
     ...store.pastMonths,
     { month: store.currentMonthKey, gross: totals.gross, net: totals.net },
   ]
-  return { totals, monthlyTrend }
+  // 일별 실거래 데이터가 없어 월 합계를 요일 패턴으로 분산해 "일별 기록"을 합성한다.
+  const days = synthesizeDailyRecords(totals)
+  const today = days[days.length - 1]
+  return { totals, today, days, monthlyTrend }
+}
+
+// 요일별 매출 가중치 (0=일 … 6=토) — 파티룸 특성상 목~토가 성수
+const WEEKDAY_FACTOR = [1.1, 0.6, 0.5, 0.7, 1.0, 1.5, 1.6]
+const DAILY_WINDOW = 35 // 오늘 포함 직전 5주치
+
+function synthesizeDailyRecords(totals: {
+  gross: number
+  fee: number
+  net: number
+  bookings: number
+}): DailyRecord[] {
+  const avgGross = totals.gross / 30
+  const feeRate = totals.gross > 0 ? totals.fee / totals.gross : 0
+  const avgBookings = totals.bookings / 30
+  const out: DailyRecord[] = []
+  for (let i = DAILY_WINDOW - 1; i >= 0; i--) {
+    const d = addDays(BASE_DATE, -i)
+    const wf = WEEKDAY_FACTOR[d.getDay()]
+    const jitter = 1 + (((d.getDate() % 5) - 2) * 0.06) // 날짜 기반 결정적 ±12% 편차
+    const gross = Math.max(0, Math.round((avgGross * wf * jitter) / 10_000)) * 10_000
+    const fee = Math.round(gross * feeRate)
+    const net = gross - fee
+    const bookings = Math.max(1, Math.round(avgBookings * wf * jitter))
+    out.push({ date: ymd(d), gross, fee, net, bookings })
+  }
+  return out
+}
+
+// ── 운영 캘린더 (정산 입금·고정비·세금신고를 날짜별로) ───────────────
+const CALENDAR_WEEKS = 6 // 부가세 신고(7/25)까지 포함하도록 6주
+
+function startOfWeek(d: Date) {
+  return addDays(d, -d.getDay()) // 일요일 시작
+}
+
+export function buildCalendar(store: DemoStore): CalendarEvent[] {
+  const weekStart = startOfWeek(BASE_DATE)
+  const end = addDays(weekStart, CALENDAR_WEEKS * 7 - 1)
+  const events: CalendarEvent[] = []
+
+  // 정산 입금(income) — 플랫폼별 정산 주기
+  for (const p of store.platforms) {
+    for (const s of settlementEvents(p, end)) {
+      events.push({ date: s.date, label: p.name, amount: s.amount, kind: 'income' })
+    }
+  }
+
+  // 네이버 예약 정산 입금 추가분 (결제 후 2일 주기로 자주 들어오는 소액 정산)
+  const naver = store.platforms.find((p) => p.key === 'naver')
+  if (naver) {
+    const naverSettlements = [
+      { date: '2026-06-23', amount: 280_000 },
+      { date: '2026-06-28', amount: 420_000 },
+      { date: '2026-07-02', amount: 350_000 },
+      { date: '2026-07-07', amount: 510_000 },
+      { date: '2026-07-14', amount: 390_000 },
+    ]
+    for (const s of naverSettlements) {
+      const d = new Date(s.date)
+      if (d >= BASE_DATE && d <= end) {
+        events.push({ date: s.date, label: naver.name, amount: s.amount, kind: 'income' })
+      }
+    }
+  }
+
+  // 고정비(expense) — 매월 dayOfMonth 발생분, 오늘 이후만
+  const months = [
+    new Date(BASE_DATE.getFullYear(), BASE_DATE.getMonth(), 1),
+    new Date(BASE_DATE.getFullYear(), BASE_DATE.getMonth() + 1, 1),
+  ]
+  for (const fc of store.fixedCosts) {
+    for (const m of months) {
+      const occ = new Date(m.getFullYear(), m.getMonth(), fc.dayOfMonth)
+      if (occ >= BASE_DATE && occ <= end) {
+        events.push({ date: ymd(occ), label: fc.item, amount: fc.amount, kind: 'expense' })
+      }
+    }
+  }
+
+  // 세금 신고(filing)
+  const filing = new Date(store.taxReserve.nextFilingDate)
+  if (filing >= BASE_DATE && filing <= end) {
+    events.push({ date: ymd(filing), label: store.taxReserve.filingType, amount: 0, kind: 'filing' })
+  }
+
+  return events.sort((a, b) => (a.date > b.date ? 1 : -1))
 }
 
 export function derivePlatformBreakdown(store: DemoStore): PlatformBreakdown {
@@ -391,6 +483,7 @@ export function buildBriefing(store: DemoStore): Briefing {
     weekSettlement,
     upcoming,
     vacancy,
+    calendar: buildCalendar(store),
     cashRisk: risk
       ? {
           period: `${risk.startLabel}~${risk.endLabel}`,

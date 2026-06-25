@@ -1,25 +1,16 @@
 import { useEffect, useState } from 'react'
 import {
-  Bar, BarChart, CartesianGrid, Cell, Line, LineChart,
-  Pie, PieChart, ReferenceLine, ResponsiveContainer, Tooltip, XAxis, YAxis,
+  Bar, BarChart, CartesianGrid, Cell, ComposedChart, Line,
+  Pie, PieChart, ResponsiveContainer, Tooltip, XAxis, YAxis,
 } from 'recharts'
-import { ArrowRight } from 'lucide-react'
+import { ArrowRight, ChevronLeft, ChevronRight } from 'lucide-react'
 import { Card, CardTitle, Pill } from '../components/ui'
-import { fmtMan, fmtWon } from '../lib/utils'
+import { fmtMan } from '../lib/utils'
 import { useAuth } from '../contexts/AuthContext'
 import {
   getDashboardSummary, getPlatformBreakdown, getPlatforms,
   type DashboardSummary, type PlatformBreakdown, type PlatformSummary,
 } from '../lib/api'
-
-function Row({ label, value, valueClass = '' }: { label: string; value: string; valueClass?: string }) {
-  return (
-    <div className="flex items-center justify-between text-sm">
-      <span className="text-ink-500">{label}</span>
-      <span className={`font-medium ${valueClass}`}>{value}</span>
-    </div>
-  )
-}
 
 const toManwon = (won: number) => Math.round(won / 10_000)
 const monthLabel = (monthKey: string) => `${Number(monthKey.slice(5))}월`
@@ -60,10 +51,44 @@ export default function Sales() {
   if (error) return <p className="text-sm text-danger">불러오지 못했습니다: {error}</p>
   if (!summary || !platforms || !breakdown) return <p className="text-sm text-ink-400">불러오는 중...</p>
 
-  const items = breakdown.breakdown
-  const shareTotal = items.reduce((s, p) => s + p.gross, 0)
-  const avgFeeRate = platforms.reduce((s, p) => s + p.fee, 0) / platforms.reduce((s, p) => s + p.gross, 0)
   const totals = summary.totals
+  const monthCount = summary.monthlyTrend.length
+  const idx = selIndex ?? monthCount - 1
+  const selMonth = summary.monthlyTrend[idx]
+  const selGross = selMonth.gross
+  const selNet = selMonth.net
+  const selFee = Math.max(0, selGross - selNet)
+  // 데모는 현재월 플랫폼 분해만 있어, 선택 월 총매출 비율로 스케일해 과거 달도 표현
+  const ratio = mode === 'demo' && totals.gross > 0 ? selGross / totals.gross : 1
+  // 이번 달/실서버는 실제 플랫폼 분해를 사용하고, 데모의 과거 달은 월별 결정적 편차로
+  // 플랫폼 매출 비중이 달마다 달라지도록 선택 월 총매출을 재분배한다.
+  const isCurrentMonth = idx === monthCount - 1
+  const items =
+    mode === 'demo' && !isCurrentMonth
+      ? (() => {
+          const seed = Number(selMonth.month.slice(5))
+          const weights = breakdown.breakdown.map(
+            (p, i) => p.gross * (0.7 + (((seed * (i + 2)) % 10) / 10) * 0.6),
+          )
+          const wSum = weights.reduce((s, w) => s + w, 0) || 1
+          return breakdown.breakdown.map((p, i) => {
+            const gross = Math.round((selGross * weights[i]) / wSum)
+            const fee = Math.round(gross * p.feeRate)
+            const net = gross - fee
+            return { ...p, gross, fee, net, netRate: gross > 0 ? net / gross : 0 }
+          })
+        })()
+      : breakdown.breakdown
+  const shareTotal = items.reduce((s, p) => s + p.gross, 0)
+  const avgFeeRate = selGross > 0 ? selFee / selGross : 0
+  const selBookings = Math.round(totals.bookings * ratio)
+  const connected = platforms.filter((p) => p.connected)
+  const avgOccupancy = connected.length
+    ? Math.round(connected.reduce((s, p) => s + p.occupancy, 0) / connected.length)
+    : 0
+  const avgVacancy = 100 - avgOccupancy
+  const goPrevMonth = () => setSelIndex(Math.max(0, idx - 1))
+  const goNextMonth = () => setSelIndex(Math.min(monthCount - 1, idx + 1))
 
   return (
     <div>
@@ -73,23 +98,57 @@ export default function Sales() {
         <p className="mt-1 text-sm text-ink-400">채널별 매출·수수료·순익을 한눈에</p>
       </div>
 
+      {/* 월 이동 */}
+      <div className="mb-4 flex items-center justify-between rounded-2xl border border-slate-200 bg-white px-3 py-2">
+        <button
+          onClick={goPrevMonth}
+          disabled={idx <= 0}
+          aria-label="이전 달"
+          className="grid h-9 w-9 place-items-center rounded-full text-ink-500 transition hover:bg-slate-50 hover:text-ink-700 disabled:opacity-30"
+        >
+          <ChevronLeft size={18} />
+        </button>
+        <div className="text-sm font-bold text-ink-700">
+          {selMonth.month.slice(0, 4)}년 {Number(selMonth.month.slice(5))}월 결산
+          {idx === monthCount - 1 && (
+            <span className="ml-2 rounded-full bg-brand-50 px-2 py-0.5 text-[11px] font-semibold text-brand-600">
+              이번 달
+            </span>
+          )}
+        </div>
+        <button
+          onClick={goNextMonth}
+          disabled={idx >= monthCount - 1}
+          aria-label="다음 달"
+          className="grid h-9 w-9 place-items-center rounded-full text-ink-500 transition hover:bg-slate-50 hover:text-ink-700 disabled:opacity-30"
+        >
+          <ChevronRight size={18} />
+        </button>
+      </div>
+
       {/* 월별 결산 요약 */}
       <Card>
         <CardTitle>{selLabel} 결산 요약</CardTitle>
         <div className="space-y-3">
           <div className="flex items-center justify-between">
-            <span className="text-sm text-ink-400">총 매출 <span className="text-ink-300">예약 {totals.bookings}건</span></span>
-            <span className="text-xl font-extrabold tracking-tight">{fmtMan(toManwon(totals.gross))}</span>
+            <span className="text-sm text-ink-400">총 매출 <span className="text-ink-300">예약 {selBookings}건</span></span>
+            <span className="text-xl font-extrabold tracking-tight">{fmtMan(toManwon(selGross))}</span>
           </div>
           <div className="flex items-center justify-between">
             <span className="flex items-center gap-1.5 text-sm text-ink-400">
               수수료 <Pill tone="danger">{(avgFeeRate * 100).toFixed(1)}%</Pill>
             </span>
-            <span className="text-xl font-extrabold tracking-tight text-danger">-{fmtMan(toManwon(totals.fee))}</span>
+            <span className="text-xl font-extrabold tracking-tight text-danger">-{fmtMan(toManwon(selFee))}</span>
           </div>
           <div className="flex items-center justify-between border-t border-slate-100 pt-3">
             <span className="text-sm font-medium text-ink-600">실 수익</span>
-            <span className="text-2xl font-extrabold tracking-tight text-brand-600">{fmtMan(toManwon(totals.net))}</span>
+            <span className="text-2xl font-extrabold tracking-tight text-brand-600">{fmtMan(toManwon(selNet))}</span>
+          </div>
+          <div className="flex items-center justify-between border-t border-slate-100 pt-3">
+            <span className="text-sm text-ink-400">월 평균 가동률</span>
+            <span className="text-sm font-bold text-positive">
+              {avgOccupancy}% <span className="font-medium text-ink-400">· 공실 {avgVacancy}%</span>
+            </span>
           </div>
         </div>
       </Card>
@@ -100,22 +159,25 @@ export default function Sales() {
         <Card>
           <CardTitle>월별 추이</CardTitle>
           <div className="mb-3 flex items-center gap-4 text-xs font-medium text-ink-400">
-            <span className="flex items-center gap-1.5"><span className="h-0.5 w-3 rounded bg-brand-500" /> 순익</span>
-            <span className="flex items-center gap-1.5"><span className="h-0 w-3 border-t-2 border-dashed border-slate-300" /> 매출</span>
+            <span className="flex items-center gap-1.5"><span className="h-2.5 w-2.5 rounded-sm bg-brand-500" /> 매출</span>
+            <span className="flex items-center gap-1.5"><span className="h-0.5 w-3 rounded bg-positive" /> 순익</span>
             <span className="ml-auto text-[11px]">월 클릭 → 상세</span>
           </div>
           <ResponsiveContainer width="100%" height={180}>
-            <LineChart data={chartData} margin={{ left: -8, right: 8 }}
+            <ComposedChart data={chartData} margin={{ left: -8, right: 8 }}
               onClick={(e: any) => { if (e?.activeTooltipIndex != null) setSelIndex(e.activeTooltipIndex) }}
               className="cursor-pointer">
               <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#eef0f4" />
               <XAxis dataKey="label" tickLine={false} axisLine={false} fontSize={11} />
               <YAxis tickFormatter={(v) => `${v}만`} tickLine={false} axisLine={false} fontSize={11} />
               <Tooltip formatter={(v: number) => fmtMan(v)} contentStyle={{ borderRadius: 12, border: '1px solid #eef0f4' }} />
-              <ReferenceLine x={selLabel} stroke="#1f47f5" strokeDasharray="4 3" strokeOpacity={0.5} />
-              <Line type="monotone" dataKey="gross" name="매출" stroke="#cbd5e1" strokeWidth={2} strokeDasharray="5 4" dot={{ r: 3 }} activeDot={{ r: 5 }} />
-              <Line type="monotone" dataKey="net" name="순익" stroke="#3366ff" strokeWidth={2.5} dot={{ r: 3 }} activeDot={{ r: 6 }} />
-            </LineChart>
+              <Bar dataKey="gross" name="매출" radius={[6, 6, 0, 0]} barSize={18}>
+                {chartData.map((d, i) => (
+                  <Cell key={i} fill={d.label === selLabel ? '#3366ff' : '#c7d6ff'} />
+                ))}
+              </Bar>
+              <Line type="monotone" dataKey="net" name="순익" stroke="#16a34a" strokeWidth={2.5} dot={{ r: 3 }} activeDot={{ r: 6 }} />
+            </ComposedChart>
           </ResponsiveContainer>
         </Card>
 
@@ -209,37 +271,6 @@ export default function Sales() {
           )
         })()}
       </Card>
-
-      {/* 채널별 현황 */}
-      <div className="mt-6">
-        <h2 className="mb-3 text-base font-extrabold">채널별 현황</h2>
-        <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
-          {platforms.map((c) => (
-            <Card key={c.id}>
-              <div className="mb-3 flex items-center justify-between">
-                <div className="flex items-center gap-2 font-bold">
-                  <span className="h-2 w-2 rounded-full" style={{ background: c.color }} />{c.name}
-                </div>
-                <Pill tone="neutral">{c.settleCycle}</Pill>
-              </div>
-              <div className="space-y-2">
-                <Row label="매출" value={fmtWon(c.gross)} />
-                <Row label="수수료율" value={`${(c.feeRate * 100).toFixed(0)}%`} valueClass="text-danger" />
-                <Row label="정산액" value={fmtWon(c.net)} valueClass="font-bold text-brand-600" />
-                <Row label="예약률" value={`${c.occupancy}%`} valueClass="text-positive" />
-              </div>
-              <div className="mt-3 border-t border-slate-100 pt-3">
-                <div className="mb-1 flex justify-between text-[11px] text-ink-400">
-                  <span>가동률</span><span>공실 {c.vacancy}%</span>
-                </div>
-                <div className="h-1.5 rounded-full bg-slate-100">
-                  <div className="h-1.5 rounded-full bg-brand-500" style={{ width: `${c.occupancy}%` }} />
-                </div>
-              </div>
-            </Card>
-          ))}
-        </div>
-      </div>
     </div>
   )
 }

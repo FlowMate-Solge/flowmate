@@ -113,7 +113,7 @@ export default function Landing() {
         </h1>
 
         <p className="mt-4 text-[14px] leading-relaxed text-ink-500 md:mt-5 md:text-[16px]">
-          파티룸·게스트하우스·스터디카페 —<br />
+          파티룸·게스트하우스·펜션 —<br />
           여러 플랫폼에 흩어진 매출을 하나로 모아,<br />
           현금이 언제 부족해질지 미리 알려드립니다.
         </p>

@@ -19,6 +19,12 @@ const M = (manwon: number) => manwon * 10_000
 // ── 대시보드 ─────────────────────────────────────────────────
 export const DEMO_DASHBOARD: DashboardSummary = {
   totals: { gross: M(850), fee: M(72), net: M(778), bookings: 110 },
+  today: { gross: M(39), fee: M(3), net: M(36), bookings: 5 },
+  days: [
+    { date: '2026-06-17', gross: M(20), fee: M(2), net: M(18), bookings: 3 },
+    { date: '2026-06-18', gross: M(28), fee: M(2), net: M(26), bookings: 4 },
+    { date: '2026-06-19', gross: M(39), fee: M(3), net: M(36), bookings: 5 },
+  ],
   monthlyTrend: [
     { month: '2026-01', gross: M(520), net: M(470) },
     { month: '2026-02', gross: M(480), net: M(432) },
