@@ -108,17 +108,20 @@ export default function Dashboard() {
 
       {/* 자금 부족 알림 */}
       {briefing?.cashRisk && (
-        <Card className="mb-4 border-l-4 border-l-danger">
-          <div className="flex items-center justify-between">
-            <span className="text-sm font-semibold text-danger">{briefing.cashRisk.period} 자금 부족 구간</span>
-            <span className="text-xs text-ink-400">최저 {fmtMan(toManwon(briefing.cashRisk.lowestBalance))}</span>
+        <div className="mb-4 flex items-start gap-3 rounded-2xl border border-red-100 bg-red-50 p-4">
+          <div className="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-danger text-white">
+            <AlertTriangle size={18} />
           </div>
-          <p className="mt-2 text-sm leading-relaxed text-ink-600">{briefing.cashRisk.reason}</p>
-          <div className="mt-3 border-t border-stone-100 pt-3">
-            <span className="text-xs font-medium text-ink-400">대응 제안</span>
-            <p className="mt-1 text-sm leading-relaxed text-ink-700">{briefing.cashRisk.suggestion}</p>
+          <div>
+            <div className="font-bold text-danger">
+              {briefing.cashRisk.period} 자금 부족 구간 — 최저 {fmtMan(toManwon(briefing.cashRisk.lowestBalance))}
+            </div>
+            <p className="mt-0.5 text-sm text-ink-700">{briefing.cashRisk.reason}</p>
+            <p className="mt-1 text-sm text-ink-700">
+              💡 <b>대응:</b> {briefing.cashRisk.suggestion}
+            </p>
           </div>
-        </Card>
+        </div>
       )}
 
       {/* 오늘의 브리핑 */}
