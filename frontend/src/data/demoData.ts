@@ -282,7 +282,7 @@ export const DEMO_PLATFORM_BREAKDOWN: PlatformBreakdown = {
 // ── 사업장 정보 ───────────────────────────────────────────────
 export const DEMO_BUSINESS = {
   id: 1,
-  name: '무드살롱 홍대점',
+  name: '무드살롱 전주점',
   type: '파티룸',
   ownerName: '김민수',
   yearsOpen: 2,
