@@ -106,78 +106,6 @@ export default function Dashboard() {
         badge="2026년 6월"
       />
 
-      {/* 자금 부족 알림 */}
-      {briefing?.cashRisk && (
-        <div className="mb-4 flex items-start gap-3 rounded-2xl border border-red-100 bg-red-50 p-4">
-          <div className="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-danger text-white">
-            <AlertTriangle size={18} />
-          </div>
-          <div>
-            <div className="font-bold text-danger">
-              {briefing.cashRisk.period} 자금 부족 구간 — 최저 {fmtMan(toManwon(briefing.cashRisk.lowestBalance))}
-            </div>
-            <p className="mt-0.5 text-sm text-ink-700">{briefing.cashRisk.reason}</p>
-            <p className="mt-1 text-sm text-ink-700">
-              💡 <b>대응:</b> {briefing.cashRisk.suggestion}
-            </p>
-          </div>
-        </div>
-      )}
-
-      {/* 오늘의 브리핑 */}
-      {briefing && (
-        <Card className="mb-4 border-l-4 border-l-brand-500">
-          <CardTitle right={<span className="text-xs text-ink-400">{briefing.date}</span>}>
-            <span className="inline-flex items-center gap-1.5">
-              <Sparkles size={15} className="text-brand-600" /> 오늘의 브리핑
-            </span>
-          </CardTitle>
-          <div className="space-y-4">
-            {/* 예상 잔액 */}
-            <div className="rounded-xl bg-brand-50 px-4 py-3">
-              <div className="text-xs text-ink-500">오늘 예상 잔액</div>
-              <div className="mt-1 text-2xl font-extrabold text-brand-700">
-                {fmtMan(toManwon(briefing.expectedBalance))}
-              </div>
-            </div>
-            {/* 이번 주 정산 */}
-            <div>
-              <div className="flex items-center gap-1 text-xs font-medium text-ink-500 mb-1.5">
-                <CalendarClock size={13} /> 이번 주 정산
-              </div>
-              <ul className="space-y-1 text-sm">
-                {briefing.weekSettlement.length ? (
-                  briefing.weekSettlement.map((s, i) => (
-                    <li key={i} className="flex justify-between gap-2">
-                      <span className="text-ink-600">{s.date} {s.platform}</span>
-                      <span className="font-semibold text-positive">+{fmtMan(toManwon(s.amount))}</span>
-                    </li>
-                  ))
-                ) : (
-                  <li className="text-ink-400">이번 주 정산 없음</li>
-                )}
-              </ul>
-            </div>
-            {/* 임박 지출 */}
-            <div>
-              <div className="flex items-center gap-1 text-xs font-medium text-ink-500 mb-1.5">
-                <Wallet size={13} /> 임박 지출
-              </div>
-              <ul className="space-y-1 text-sm">
-                {briefing.upcoming.map((u, i) => (
-                  <li key={i} className="flex justify-between gap-2">
-                    <span className={u.urgent ? 'font-medium text-danger' : 'text-ink-600'}>
-                      {u.date} {u.label}
-                    </span>
-                    <span className="font-semibold text-ink-700">-{fmtMan(toManwon(u.amount))}</span>
-                  </li>
-                ))}
-              </ul>
-            </div>
-          </div>
-        </Card>
-      )}
-
       {/* 상단 요약 */}
       <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
         <StatCard
@@ -270,6 +198,78 @@ export default function Dashboard() {
           </div>
         </Card>
       </div>
+
+      {/* 자금 부족 알림 */}
+      {briefing?.cashRisk && (
+        <div className="mt-4 flex items-start gap-3 rounded-2xl border border-red-100 bg-red-50 p-4">
+          <div className="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-danger text-white">
+            <AlertTriangle size={18} />
+          </div>
+          <div>
+            <div className="font-bold text-danger">
+              {briefing.cashRisk.period} 자금 부족 구간 — 최저 {fmtMan(toManwon(briefing.cashRisk.lowestBalance))}
+            </div>
+            <p className="mt-0.5 text-sm text-ink-700">{briefing.cashRisk.reason}</p>
+            <p className="mt-1 text-sm text-ink-700">
+              💡 <b>대응:</b> {briefing.cashRisk.suggestion}
+            </p>
+          </div>
+        </div>
+      )}
+
+      {/* 오늘의 브리핑 */}
+      {briefing && (
+        <Card className="mt-4 border-l-4 border-l-brand-500">
+          <CardTitle right={<span className="text-xs text-ink-400">{briefing.date}</span>}>
+            <span className="inline-flex items-center gap-1.5">
+              <Sparkles size={15} className="text-brand-600" /> 오늘의 브리핑
+            </span>
+          </CardTitle>
+          <div className="space-y-4">
+            {/* 예상 잔액 */}
+            <div className="rounded-xl bg-brand-50 px-4 py-3">
+              <div className="text-xs text-ink-500">오늘 예상 잔액</div>
+              <div className="mt-1 text-2xl font-extrabold text-brand-700">
+                {fmtMan(toManwon(briefing.expectedBalance))}
+              </div>
+            </div>
+            {/* 이번 주 정산 */}
+            <div>
+              <div className="flex items-center gap-1 text-xs font-medium text-ink-500 mb-1.5">
+                <CalendarClock size={13} /> 이번 주 정산
+              </div>
+              <ul className="space-y-1 text-sm">
+                {briefing.weekSettlement.length ? (
+                  briefing.weekSettlement.map((s, i) => (
+                    <li key={i} className="flex justify-between gap-2">
+                      <span className="text-ink-600">{s.date} {s.platform}</span>
+                      <span className="font-semibold text-positive">+{fmtMan(toManwon(s.amount))}</span>
+                    </li>
+                  ))
+                ) : (
+                  <li className="text-ink-400">이번 주 정산 없음</li>
+                )}
+              </ul>
+            </div>
+            {/* 임박 지출 */}
+            <div>
+              <div className="flex items-center gap-1 text-xs font-medium text-ink-500 mb-1.5">
+                <Wallet size={13} /> 임박 지출
+              </div>
+              <ul className="space-y-1 text-sm">
+                {briefing.upcoming.map((u, i) => (
+                  <li key={i} className="flex justify-between gap-2">
+                    <span className={u.urgent ? 'font-medium text-danger' : 'text-ink-600'}>
+                      {u.date} {u.label}
+                    </span>
+                    <span className="font-semibold text-ink-700">-{fmtMan(toManwon(u.amount))}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          </div>
+        </Card>
+      )}
     </div>
   )
 }
