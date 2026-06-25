@@ -2,10 +2,11 @@ import { useEffect, useState } from 'react'
 import { ExternalLink, MapPin, TrendingUp, Wallet } from 'lucide-react'
 import { Card, ErrorBanner, PageSkeleton, Pill } from '../components/ui'
 import { useAuth } from '../contexts/AuthContext'
-import { DEMO_POLICY, DEMO_PRICE, DEMO_STRATEGY } from '../data/demoData'
+import { DEMO_POLICY, DEMO_STRATEGY } from '../data/demoData'
+import { MY_CURRENT_PRICE, NEARBY_VENUES, SURVEYED_AREA, SURVEYED_AT } from '../data/nearbyVenues'
 import {
-  getPlatformStrategy, getPolicyFunds, getPriceBenchmark,
-  type PlatformStrategy, type PolicyFunds, type PriceBenchmark,
+  getPlatformStrategy, getPolicyFunds,
+  type PlatformStrategy, type PolicyFunds,
 } from '../lib/api'
 
 const toneStyle: Record<PlatformStrategy['tone'], string> = {
@@ -17,8 +18,7 @@ const toneStyle: Record<PlatformStrategy['tone'], string> = {
 const fmtWonRaw = (won: number) => `₩${won.toLocaleString('ko-KR')}`
 
 export default function Actions() {
-  const { mode } = useAuth()
-  const [price, setPrice] = useState<PriceBenchmark | null>(null)
+  const { mode, demo } = useAuth()
   const [strategies, setStrategies] = useState<PlatformStrategy[] | null>(null)
   const [policy, setPolicy] = useState<PolicyFunds | null>(null)
   const [error, setError] = useState<string | null>(null)
@@ -26,23 +26,51 @@ export default function Actions() {
 
   useEffect(() => {
     if (mode === 'demo') {
-      setPrice(DEMO_PRICE); setStrategies(DEMO_STRATEGY); setPolicy(DEMO_POLICY)
+      setStrategies(DEMO_STRATEGY); setPolicy(DEMO_POLICY)
       return
     }
-    setPrice(null); setStrategies(null); setPolicy(null); setError(null)
-    Promise.all([getPriceBenchmark(), getPlatformStrategy(), getPolicyFunds()])
-      .then(([p, s, f]) => { setPrice(p); setStrategies(s); setPolicy(f) })
+    setStrategies(null); setPolicy(null); setError(null)
+    Promise.all([getPlatformStrategy(), getPolicyFunds()])
+      .then(([s, f]) => { setStrategies(s); setPolicy(f) })
       .catch((e) => setError(e.message))
   }, [mode, retryKey])
 
   if (error) return <ErrorBanner message={error} onRetry={() => setRetryKey((k) => k + 1)} />
-  if (!price || !strategies || !policy) return <PageSkeleton />
+  if (!strategies || !policy) return <PageSkeleton />
 
-  const b = price.benchmark
+  // 시세 계산기: 주변 매장 시세(큐레이션 데이터) 기반 적정가 분석
+  const venuePrices = NEARBY_VENUES.map((v) => v.pricePerHour)
+  const low = Math.min(...venuePrices)
+  const high = Math.max(...venuePrices)
+  const avg = Math.round(venuePrices.reduce((s, p) => s + p, 0) / venuePrices.length)
+  const current = MY_CURRENT_PRICE
+
+  const avgVacancy =
+    mode === 'demo' && demo.platforms.length
+      ? Math.round(demo.platforms.reduce((s, p) => s + p.vacancy, 0) / demo.platforms.length)
+      : null
+
+  let golden = avg
+  let vacancyNote = ''
+  if (avgVacancy != null) {
+    if (avgVacancy >= 25) {
+      golden = Math.round((avg * 0.95) / 1000) * 1000
+      vacancyNote = ` 평균 공실률이 ${avgVacancy}%로 높은 편이라 평균보다 살짝 낮게 제안합니다.`
+    } else if (avgVacancy <= 15) {
+      golden = Math.round((avg * 1.05) / 1000) * 1000
+      vacancyNote = ` 평균 공실률이 ${avgVacancy}%로 낮아 평균보다 살짝 높게 제안합니다.`
+    } else {
+      vacancyNote = ' 공실률이 안정적인 편이라 평균 시세를 그대로 제안합니다.'
+    }
+  }
+  const insight = `${SURVEYED_AREA} 인근 ${NEARBY_VENUES.length}곳 평균은 ${fmtWonRaw(avg)}입니다 (${SURVEYED_AT} 조사 기준).${vacancyNote}`
+
+  const b = { low, high, golden, current }
   const pos = (won: number) => ((won - b.low) / (b.high - b.low)) * 100
-  const goldenLeft = pos(b.golden - 5000)
-  const goldenWidth = pos(b.golden + 5000) - goldenLeft
-  const maxShare = Math.max(...price.bands.map((x) => x.share))
+  const goldenLeft = pos(b.golden - 1000)
+  const goldenWidth = pos(b.golden + 1000) - goldenLeft
+  const headroom = b.golden - b.current
+  const maxBar = Math.max(high, current)
 
   return (
     <div>
@@ -82,26 +110,28 @@ export default function Actions() {
           </div>
           <div className="mt-2 flex justify-between text-xs">
             <span className="text-ink-500">현재 <b className="text-ink-900">{fmtWonRaw(b.current)}/시</b></span>
-            <span className="text-brand-600 font-medium">+{fmtWonRaw(price.headroom)} 인상 여유</span>
+            <span className={`font-medium ${headroom >= 0 ? 'text-brand-600' : 'text-danger'}`}>
+              {headroom >= 0 ? `+${fmtWonRaw(headroom)} 인상 여유` : `${fmtWonRaw(headroom)} 인하 검토`}
+            </span>
           </div>
         </div>
 
-        {/* 가격대 분포 */}
+        {/* 주변 매장 시세 */}
         <div className="mt-5 border-t border-slate-100 pt-4">
-          <div className="mb-2 text-xs font-medium text-ink-500">소비자 선호 가격대</div>
+          <div className="mb-2 text-xs font-medium text-ink-500">주변 매장 시세</div>
           <div className="space-y-1.5">
-            {price.bands.map((band) => (
-              <div key={band.band} className="flex items-center gap-2 text-xs">
-                <span className="w-12 shrink-0 text-ink-400">{band.band}</span>
+            {NEARBY_VENUES.map((v) => (
+              <div key={v.name} className="flex items-center gap-2 text-xs">
+                <span className="w-28 shrink-0 truncate text-ink-400">{v.name}</span>
                 <div className="h-2 flex-1 rounded-full bg-slate-100">
-                  <div className={`h-2 rounded-full ${band.share === maxShare ? 'bg-positive' : 'bg-brand-300'}`}
-                    style={{ width: `${band.share}%` }} />
+                  <div className={`h-2 rounded-full ${v.pricePerHour === high ? 'bg-positive' : 'bg-brand-300'}`}
+                    style={{ width: `${(v.pricePerHour / maxBar) * 100}%` }} />
                 </div>
-                <span className="w-8 shrink-0 text-right font-medium">{band.share}%</span>
+                <span className="w-16 shrink-0 text-right font-medium">{fmtWonRaw(v.pricePerHour)}</span>
               </div>
             ))}
           </div>
-          <p className="mt-3 text-xs italic text-ink-400">"{price.insight}"</p>
+          <p className="mt-3 text-xs italic text-ink-400">"{insight}"</p>
         </div>
       </Card>
 

@@ -6,6 +6,7 @@
 
 export const SURVEYED_AT = '2026년 6월'
 export const SURVEYED_AREA = '전북 전주시 객사거리·한옥마을 일대'
+export const MY_CURRENT_PRICE = 21_000 // 내 매장의 현재 시간당 책정가(원)
 
 export interface NearbyVenue {
   name: string
