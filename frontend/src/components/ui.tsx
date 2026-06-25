@@ -5,10 +5,12 @@ export function PageHeader({
   title,
   subtitle,
   badge,
+  action,
 }: {
   title: string
   subtitle?: string
   badge?: string
+  action?: ReactNode
 }) {
   return (
     <div className="mb-6 flex items-start justify-between">
@@ -16,9 +18,12 @@ export function PageHeader({
         <h1 className="text-2xl font-extrabold tracking-tight">{title}</h1>
         {subtitle && <p className="mt-1 text-sm text-ink-500">{subtitle}</p>}
       </div>
-      {badge && (
-        <span className="pill bg-brand-50 text-brand-700">{badge}</span>
-      )}
+      <div className="flex items-center gap-2">
+        {badge && (
+          <span className="pill bg-brand-50 text-brand-700">{badge}</span>
+        )}
+        {action}
+      </div>
     </div>
   )
 }

@@ -22,12 +22,24 @@ function monthKey(date: Date) {
   return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`
 }
 
+export interface CalendarEvent {
+  date: string // YYYY-MM-DD
+  label: string
+  amount: number // 원 (kind로 입금/지출 구분)
+  kind: 'income' | 'expense' | 'filing'
+}
+
 export interface Briefing {
   date: string
   expectedBalance: number // 오늘 예상 잔액(원)
   weekSettlement: { platform: string; amount: number; date: string }[]
   upcoming: { label: string; amount: number; date: string; urgent: boolean }[]
   vacancy: string
+  calendar: CalendarEvent[] // 오늘부터 이어지는 일정(정산·고정비·세금신고)
+}
+
+function ymd(d: Date) {
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
 }
 
 // 가장 최근 달 총매출(원) — 세금 권장액 산정용
@@ -97,11 +109,43 @@ export function buildBriefing(
   const weekday = new Intl.DateTimeFormat('ko-KR', { weekday: 'long' }).format(BASE_DATE)
   const date = `${BASE_DATE.getFullYear()}년 ${BASE_DATE.getMonth() + 1}월 ${BASE_DATE.getDate()}일 ${weekday}`
 
+  // 운영 캘린더: 정산 입금 + 고정비 지출 + 세금 신고 (오늘부터 6주)
+  const calStart = addDays(BASE_DATE, -BASE_DATE.getDay()) // 일요일 시작
+  const calEnd = addDays(calStart, 6 * 7 - 1)
+  const calendar: CalendarEvent[] = []
+  for (const s of forecast.settlements) {
+    calendar.push({
+      date: s.date,
+      label: s.label.replace(/\s*정산$/, ''),
+      amount: s.amount,
+      kind: 'income',
+    })
+  }
+  for (const fc of fixedCosts) {
+    for (const m of [
+      new Date(BASE_DATE.getFullYear(), BASE_DATE.getMonth(), 1),
+      new Date(BASE_DATE.getFullYear(), BASE_DATE.getMonth() + 1, 1),
+    ]) {
+      const occ = new Date(m.getFullYear(), m.getMonth(), fc.dayOfMonth)
+      if (occ >= BASE_DATE && occ <= calEnd) {
+        calendar.push({ date: ymd(occ), label: fc.item, amount: fc.amount, kind: 'expense' })
+      }
+    }
+  }
+  if (taxReserve) {
+    const filing = new Date(taxReserve.nextFilingDate)
+    if (filing >= BASE_DATE && filing <= calEnd) {
+      calendar.push({ date: ymd(filing), label: taxReserve.filingType, amount: 0, kind: 'filing' })
+    }
+  }
+  calendar.sort((a, b) => (a.date > b.date ? 1 : -1))
+
   return {
     date,
     expectedBalance: today?.balance ?? 0,
     weekSettlement,
     upcoming,
     vacancy,
+    calendar,
   }
 }
