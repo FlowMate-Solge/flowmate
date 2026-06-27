@@ -4,7 +4,7 @@ import {
   Pie, PieChart, ResponsiveContainer, Tooltip, XAxis, YAxis,
 } from 'recharts'
 import { ArrowRight, ChevronLeft, ChevronRight } from 'lucide-react'
-import { Card, CardTitle, Pill } from '../components/ui'
+import { Card, CardTitle, PageHeader, Pill } from '../components/ui'
 import { fmtMan } from '../lib/utils'
 import { useAuth } from '../contexts/AuthContext'
 import {
@@ -93,10 +93,7 @@ export default function Sales() {
   return (
     <div>
       {/* 헤더 */}
-      <div className="mb-6">
-        <h1 className="text-2xl font-extrabold tracking-tight">매출 분석</h1>
-        <p className="mt-1 text-sm text-ink-400">채널별 매출·수수료·순익을 한눈에</p>
-      </div>
+      <PageHeader title="매출 분석" subtitle="채널별 매출·수수료·순익 비교" />
 
       {/* 월 이동 */}
       <div className="mb-4 flex items-center justify-between rounded-2xl border border-slate-200 bg-white px-3 py-2">
@@ -232,27 +229,28 @@ export default function Sales() {
             <table className="w-full text-sm">
               <thead className="bg-slate-50 text-xs text-ink-500">
                 <tr>
-                  <th className="px-3 py-2 text-left font-medium">채널</th>
-                  <th className="px-3 py-2 text-right font-medium">매출</th>
-                  <th className="px-3 py-2 text-right font-medium">수수료</th>
-                  <th className="px-3 py-2 text-right font-medium">순익률</th>
+                  <th className="px-2.5 py-2 text-left font-medium">채널</th>
+                  <th className="px-2.5 py-2 text-right font-medium">매출</th>
+                  <th className="px-2.5 py-2 text-right font-medium">수수료</th>
+                  <th className="px-2.5 py-2 text-right font-medium">순익률</th>
                 </tr>
               </thead>
               <tbody>
                 {items.map((p) => (
                   <tr key={p.id} className="border-t border-slate-100">
-                    <td className="px-3 py-2.5">
+                    <td className="px-2.5 py-2.5">
                       <div className="flex items-center gap-1.5 font-medium">
-                        <span className="h-2 w-2 rounded-full" style={{ background: p.color }} />{p.name}
+                        <span className="h-2 w-2 shrink-0 rounded-full" style={{ background: p.color }} />
+                        <span className="break-keep">{p.name}</span>
                       </div>
                       <div className="mt-0.5 pl-3.5 text-[11px] text-ink-400">{p.settleCycle}</div>
                     </td>
-                    <td className="px-3 py-2.5 text-right">{fmtMan(toManwon(p.gross))}</td>
-                    <td className="px-3 py-2.5 text-right text-danger">
+                    <td className="whitespace-nowrap px-2.5 py-2.5 text-right">{fmtMan(toManwon(p.gross))}</td>
+                    <td className="whitespace-nowrap px-2.5 py-2.5 text-right text-danger">
                       -{fmtMan(toManwon(p.fee))}
                       <div className="text-[11px] text-ink-400">{(p.feeRate * 100).toFixed(1)}%</div>
                     </td>
-                    <td className="px-3 py-2.5 text-right font-semibold">{(p.netRate * 100).toFixed(1)}%</td>
+                    <td className="px-2.5 py-2.5 text-right font-semibold">{(p.netRate * 100).toFixed(1)}%</td>
                   </tr>
                 ))}
               </tbody>
