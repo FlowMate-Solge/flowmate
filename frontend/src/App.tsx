@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { NavLink, Outlet, useNavigate } from 'react-router-dom'
+import { NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom'
 import { LayoutDashboard, LineChart, MessageSquareText, Plug, Sun, Building2 } from 'lucide-react'
 import AiAssistant, { AiAssistantMobile } from './components/AiAssistant'
 import { useAuth } from './contexts/AuthContext'
@@ -59,6 +59,14 @@ function SidebarProfile() {
 export default function App() {
   const { mode, enterDemo } = useAuth()
   const navigate = useNavigate()
+  const { pathname } = useLocation()
+
+  // 탭 전환 시 항상 화면 최상단으로 (이전 탭 스크롤 위치 유지 방지)
+  useEffect(() => {
+    window.scrollTo(0, 0)
+    document.documentElement.scrollTop = 0
+    document.body.scrollTop = 0
+  }, [pathname])
 
   useEffect(() => {
     if (!mode) {
