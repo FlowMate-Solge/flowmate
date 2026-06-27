@@ -273,8 +273,7 @@ export default function ForecastPage() {
     <div>
       <PageHeader
         title="자금 흐름 미리보기"
-        subtitle={`향후 ${forecast.horizonDays}일 예상 잔액을 미리 확인하고 편안하게 대비하세요`}
-        badge="AI 예측"
+        subtitle={`${forecast.horizonDays}일 예상 잔액·자금 부족 시점 예측`}
       />
 
       {/* 위험 경고 배너 — 브리핑 모달과 동일한 형식 */}

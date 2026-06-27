@@ -8,7 +8,6 @@ import {
   Landmark,
   Loader2,
   Lock,
-  Pencil,
   Plus,
   ReceiptText,
   RefreshCw,
@@ -289,7 +288,7 @@ export default function Connect() {
             : `${result.created}건 업로드 완료 — 대시보드·예측에 반영됨`,
         )
       } catch {
-        setUploadStatus('CSV 형식을 확인해주세요 (platformKey,date,grossAmount,bookings)')
+        setUploadStatus('CSV 형식을 확인해주세요 (플랫폼·날짜·매출액·예약 건수 순서)')
       }
       return
     }
@@ -345,7 +344,7 @@ export default function Connect() {
     <div>
       <PageHeader
         title="데이터 연결"
-        subtitle="한 번 연결하면 매출·정산·지출이 매일 자동으로 들어옵니다. 직접 입력할 필요 없어요."
+        subtitle="매출·정산·지출 자동 연동 현황"
       />
 
       {loadError && (
@@ -394,8 +393,7 @@ export default function Connect() {
       {/* 고정 지출비 입력 */}
       <Card className="mt-4">
         <div className="mb-1 flex items-center gap-2">
-          <Plus size={18} className="text-pink-500" />
-          <Pencil size={15} className="text-ink-700" />
+          <Plus size={18} className="text-brand-600" />
           <h2 className="text-base font-bold">
             매달 나가는 월세/공과금 등 고정비 등록
           </h2>
@@ -499,7 +497,7 @@ export default function Connect() {
         >
           <Upload size={20} />
           <span className="text-sm font-medium">클릭해서 CSV 업로드</span>
-          <span className="text-[11px]">컬럼: platformKey, date, grossAmount, bookings</span>
+          <span className="text-[11px]">플랫폼 · 날짜 · 매출액 · 예약 건수 순서로 정리된 파일</span>
         </button>
         {uploadStatus && (
           <p className="mt-2 text-center text-xs text-ink-500">{uploadStatus}</p>
@@ -535,7 +533,7 @@ export default function Connect() {
           <div className="mb-2 flex items-center gap-1.5 text-xs font-medium text-ink-500">
             <ReceiptText size={14} /> 정산 내역 한 건 수기 입력 ({platformSources[0]?.name ?? '플랫폼'})
           </div>
-          <div className="flex gap-2">
+          <div className="flex flex-col gap-2 sm:flex-row">
             <input
               type="number"
               value={saleAmount}
@@ -543,19 +541,21 @@ export default function Connect() {
               placeholder="매출 금액(원)"
               className="w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm outline-none focus:border-brand-400"
             />
-            <input
-              type="number"
-              value={saleBookings}
-              onChange={(e) => setSaleBookings(e.target.value)}
-              placeholder="예약 건수"
-              className="w-24 rounded-xl border border-slate-200 px-3 py-2.5 text-sm outline-none focus:border-brand-400"
-            />
-            <button
-              onClick={handleAddSale}
-              className="shrink-0 rounded-xl bg-brand-600 px-4 text-sm font-semibold text-white transition hover:bg-brand-700"
-            >
-              추가
-            </button>
+            <div className="flex gap-2">
+              <input
+                type="number"
+                value={saleBookings}
+                onChange={(e) => setSaleBookings(e.target.value)}
+                placeholder="예약 건수"
+                className="w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm outline-none focus:border-brand-400 sm:w-24"
+              />
+              <button
+                onClick={handleAddSale}
+                className="shrink-0 rounded-xl bg-brand-600 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-brand-700"
+              >
+                추가
+              </button>
+            </div>
           </div>
           {saleStatus && <p className="mt-2 text-xs text-ink-500">{saleStatus}</p>}
         </div>

@@ -272,7 +272,7 @@ export default function Dashboard() {
     <div>
       <PageHeader
         title="오늘의 운영 현황"
-        subtitle="하루 단위로 매출과 정산 일정을 편안하게 확인하세요"
+        subtitle="하루 단위 매출·수수료·정산 현황"
         action={
           <button
             onClick={() => setAlertOpen((v) => !v)}
@@ -334,7 +334,6 @@ export default function Dashboard() {
           label="가동률"
           value={`${occupancyRate}%`}
           sub={`공실률 ${100 - occupancyRate}%`}
-          tone="positive"
         />
       </div>
 
@@ -421,15 +420,12 @@ export default function Dashboard() {
 
             <hr className="border-red-200/70" />
 
-            {/* 대응 — 경고와 동일한 좌측 정렬 */}
+            {/* 대응 — 예측 위험 배너와 동일한 형식(소제목 없이 아이콘+본문) */}
             <div className="flex items-start gap-3">
               <div className="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-amber-100 text-amber-600">
                 <Lightbulb size={18} />
               </div>
-              <div>
-                <div className="font-bold text-amber-700">대응</div>
-                <p className="mt-1 text-sm text-ink-700">{briefing.cashRisk.suggestion}</p>
-              </div>
+              <p className="pt-1.5 text-sm text-ink-700">{briefing.cashRisk.suggestion}</p>
             </div>
 
             <div className="flex items-center gap-1 text-xs font-semibold text-brand-600">

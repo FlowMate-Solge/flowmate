@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { ChevronRight, ExternalLink, TrendingUp, Wallet } from 'lucide-react'
-import { Card, ErrorBanner, PageSkeleton } from '../components/ui'
+import { Card, ErrorBanner, PageHeader, PageSkeleton } from '../components/ui'
 import { useAuth } from '../contexts/AuthContext'
 import { DEMO_POLICY, DEMO_STRATEGY } from '../data/demoData'
 import { MY_CURRENT_PRICE, NEARBY_VENUES } from '../data/nearbyVenues'
@@ -112,10 +112,7 @@ export default function Actions() {
 
   return (
     <div>
-      <div className="mb-6">
-        <h1 className="text-2xl font-extrabold tracking-tight">행동 추천</h1>
-        <p className="mt-1 text-sm text-ink-400">가격·플랫폼·정책자금 맞춤 제안</p>
-      </div>
+      <PageHeader title="행동 추천" subtitle="가격·플랫폼·정책자금 맞춤 제안" />
 
       {/* 시세 분석 */}
       <Card>
