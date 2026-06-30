@@ -263,11 +263,21 @@ export function getBusiness() {
   return request<Business>('/api/business')
 }
 
-export function askAi(question: string) {
-  return request<AiAnswer>('/api/ai/ask', {
+// 배포 환경(localhost 아님)에서는 같은 도메인의 Netlify Function을 호출,
+// 로컬 개발에서는 Express 백엔드(localhost:4000)를 호출
+export async function askAi(question: string): Promise<AiAnswer> {
+  const onLocalhost =
+    typeof window !== 'undefined' &&
+    ['localhost', '127.0.0.1'].includes(window.location.hostname)
+
+  const url = onLocalhost ? `${BASE_URL}/api/ai/ask` : '/.netlify/functions/ai-ask'
+  const res = await fetch(url, {
     method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ question }),
   })
+  if (!res.ok) throw new Error(`AI 호출 실패: ${res.status}`)
+  return res.json() as Promise<AiAnswer>
 }
 
 export function getPlatforms() {
