@@ -1,8 +1,10 @@
 # 모노레포: frontend/ 만 빌드해서 배포 (데모 모드는 백엔드 불필요)
+# AI 호출만 netlify/functions/ai-ask 서버리스 함수로 처리 (OPENAI_API_KEY는 Netlify 환경변수)
 [build]
   base = "frontend"
   command = "npm run build"
   publish = "dist"
+  functions = "netlify/functions"
 
 # SPA — react-router 경로 새로고침 시 index.html로 폴백
 [[redirects]]

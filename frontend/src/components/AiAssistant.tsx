@@ -1,7 +1,30 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useRef, useState, type ReactNode } from 'react'
 import { Send, Sparkles, X } from 'lucide-react'
 import { aiPresets } from '../data/mock'
 import { askAi } from '../lib/api'
+
+// 모델이 실수로 넣은 마크다운 기호(**, *, #, ` 등) 제거 — 화면에 노출 방지
+function stripMarkdown(text: string): string {
+  return text
+    .replace(/\*\*(.+?)\*\*/g, '$1')
+    .replace(/__(.+?)__/g, '$1')
+    .replace(/^#{1,6}\s+/gm, '')
+    .replace(/[*_`>#]/g, '')
+}
+
+// 금액·퍼센트·건수 등 수치를 굵게 강조해서 렌더 (날짜는 제외)
+const NUM_UNIT = '만원|만|원|%|건|개월|점'
+const NUM_SPLIT = new RegExp(`([+\\-]?₩?\\d[\\d,]*(?:\\.\\d+)?(?:${NUM_UNIT}))`, 'g')
+const NUM_TEST = new RegExp(`^[+\\-]?₩?\\d[\\d,]*(?:\\.\\d+)?(?:${NUM_UNIT})$`)
+function renderRich(text: string): ReactNode[] {
+  return text.split(NUM_SPLIT).map((part, i) =>
+    NUM_TEST.test(part) ? (
+      <strong key={i} className="font-bold text-ink-900">{part}</strong>
+    ) : (
+      <span key={i}>{part}</span>
+    ),
+  )
+}
 
 function ChatContent({ onClose }: { onClose?: () => void }) {
   const [input, setInput] = useState('')
@@ -73,8 +96,13 @@ function ChatContent({ onClose }: { onClose?: () => void }) {
                 ))}
               </div>
             ) : (
-              <div className="max-w-[88%] rounded-2xl bg-slate-50 px-4 py-2.5 text-sm leading-relaxed text-ink-900">
-                {answer}
+              <div className="max-w-[88%] space-y-2 rounded-2xl rounded-tl-sm bg-slate-50 px-4 py-3 text-sm leading-relaxed text-ink-900">
+                {stripMarkdown(answer ?? '')
+                  .split(/\n{2,}|\n/)
+                  .filter((s) => s.trim())
+                  .map((para, i) => (
+                    <p key={i}>{renderRich(para.trim())}</p>
+                  ))}
               </div>
             )}
           </div>
