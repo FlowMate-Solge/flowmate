@@ -9,17 +9,28 @@ function ChatContent({ onClose }: { onClose?: () => void }) {
   const [answer, setAnswer] = useState<string | null>(null)
   const [typing, setTyping] = useState(false)
 
+  // 백엔드가 닿으면 실제 AI, 안 닿으면(데모·발표·QR) 큐레이션 답변으로 폴백
   async function ask(q: string) {
     if (!q.trim()) return
     setQuestion(q)
     setInput('')
     setAnswer(null)
     setTyping(true)
+
+    const preset = aiPresets.find((p) => p.q.trim() === q.trim())?.a
+    const fallback =
+      preset ??
+      '데모 환경에서는 미리 준비된 질문에 답변할 수 있어요. 아래 추천 질문을 눌러보세요. (실시간 AI는 백엔드 연결 시 동작합니다.)'
+
     try {
       const res = await askAi(q)
-      setAnswer(res.answer ?? res.error ?? '답변을 가져오지 못했습니다.')
+      if (res.configured && res.answer) {
+        setAnswer(res.answer)
+      } else {
+        setAnswer(fallback)
+      }
     } catch {
-      setAnswer('AI 비서 호출에 실패했습니다.')
+      setAnswer(fallback)
     } finally {
       setTyping(false)
     }
